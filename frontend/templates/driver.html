@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Ostello Rides — Driver View</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0b0d10;--surface:#13161c;--surface2:#1a1e27;--border:#252b38;--border2:#2e3648;
+  --gold:#f5a623;--gold2:#e08c10;--gold-dim:rgba(245,166,35,.12);
+  --text:#e8ecf4;--text2:#8892a4;--text3:#454f63;
+  --green:#34d399;--red:#f87171;--blue:#60a5fa;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+.nav{display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--border);}
+.nav-icon{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,var(--gold),var(--gold2));display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:#0b0d10;}
+.nav-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--gold);}
+.nav-sub{font-size:11px;color:var(--text2);}
+
+.content{padding:20px;}
+.heading{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:16px;}
+.heading span{color:var(--gold);}
+
+.trip-card{background:var(--surface);border:1px solid var(--border2);border-radius:14px;overflow:hidden;margin-bottom:16px;}
+.trip-hd{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;background:var(--gold-dim);border-bottom:1px solid var(--border);
+}
+.trip-time{font-family:'DM Mono',monospace;font-size:18px;font-weight:500;color:var(--gold);}
+.trip-type{font-size:12px;color:var(--text2);margin-top:2px;}
+.trip-badge{font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(52,211,153,.1);color:var(--green);font-weight:600;}
+
+.stop-list{padding:14px 16px;}
+.stop{display:flex;align-items:flex-start;gap:10px;margin-bottom:14px;}
+.stop:last-child{margin-bottom:0;}
+.stop-dot{
+  width:12px;height:12px;border-radius:50%;border:2px solid var(--gold);background:var(--bg);
+  flex-shrink:0;margin-top:3px;
+}
+.stop-dot.start{background:var(--gold);}
+.stop-dot.end{border-color:var(--red);background:var(--red);}
+.stop-info{}
+.stop-name{font-size:14px;font-weight:600;}
+.stop-pax{font-size:12px;color:var(--text2);margin-top:3px;}
+.stop-room{font-size:11px;color:var(--text3);}
+
+.stat-row{display:flex;gap:10px;padding:12px 16px;background:var(--surface2);border-top:1px solid var(--border);}
+.stat{flex:1;text-align:center;}
+.sv{font-size:18px;font-weight:700;color:var(--gold);font-family:'Syne',sans-serif;}
+.sl{font-size:11px;color:var(--text2);}
+
+.empty{padding:48px 20px;text-align:center;color:var(--text3);font-size:14px;}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-icon">DR</div>
+  <div>
+    <div class="nav-title">Driver View</div>
+    <div class="nav-sub">Today's Schedule</div>
+  </div>
+</nav>
+
+<div class="content">
+  <div class="heading">Your trips for <span id="dateLabel">today</span></div>
+  <div id="tripList"><div class="empty">Loading schedule…</div></div>
+</div>
+
+<script>
+document.getElementById('dateLabel').textContent =
+  new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'});
+
+async function load() {
+  try {
+    const r = await fetch('/api/driver/my-group', { credentials:'include' });
+    const groups = await r.json();
+    render(groups);
+  } catch {
+    document.getElementById('tripList').innerHTML =
+      '<div class="empty">⚠️ Please log in as a driver to view schedule.</div>';
+  }
+}
+
+function render(groups) {
+  const el = document.getElementById('tripList');
+  if (!groups.length || groups.error) {
+    el.innerHTML = '<div class="empty">No trips assigned for today.</div>';
+    return;
+  }
+  el.innerHTML = groups.map(g => {
+    const stops = g.ordered_stops || [];
+    const stopsHtml = stops.map((s, i) => `
+      <div class="stop">
+        <div class="stop-dot ${i===0?'start':i===stops.length-1?'end':''}"></div>
+        <div class="stop-info">
+          <div class="stop-name">${s.label}</div>
+          ${g.passengers?.filter(p=>p.location_label===s.label).map(p=>
+            `<div class="stop-pax">👤 ${p.name} <span class="stop-room">${p.room_number?'Room '+p.room_number:''}</span></div>`
+          ).join('')||''}
+        </div>
+      </div>`).join('');
+
+    const dist = g.route_data?.distance_km || '—';
+    const dur  = g.route_data?.duration_min || '—';
+
+    return `
+    <div class="trip-card">
+      <div class="trip-hd">
+        <div>
+          <div class="trip-time">${g.scheduled_time}</div>
+          <div class="trip-type">${g.type==='drop'?'🚐 Drop run':'📍 Pickup run'} · ${g.passengers?.length||0} passengers</div>
+        </div>
+        <span class="trip-badge">${g.status}</span>
+      </div>
+      <div class="stop-list">${stopsHtml||'<div style="color:var(--text3);font-size:13px">No stops loaded yet</div>'}</div>
+      <div class="stat-row">
+        <div class="stat"><div class="sv">${dist} km</div><div class="sl">Distance</div></div>
+        <div class="stat"><div class="sv">${dur} min</div><div class="sl">Duration</div></div>
+        <div class="stat"><div class="sv">${g.passengers?.length||0}/10</div><div class="sl">Passengers</div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+load();
+</script>
+</body>
+</html>

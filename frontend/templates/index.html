@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>Ostello Rides — Navi Mumbai</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:         #0b0d10;
+  --surface:    #13161c;
+  --surface2:   #1a1e27;
+  --surface3:   #21263200;
+  --border:     #252b38;
+  --border2:    #2e3648;
+
+  /* Ostello brand — warm amber/gold on dark */
+  --gold:       #f5a623;
+  --gold2:      #e08c10;
+  --gold-dim:   rgba(245,166,35,.13);
+  --gold-glow:  rgba(245,166,35,.22);
+
+  --user-bg:    #2a1f05;
+  --user-bdr:   #5c3d0a;
+  --user-text:  #fde8a8;
+
+  --text:       #e8ecf4;
+  --text2:      #8892a4;
+  --text3:      #454f63;
+
+  --green:      #34d399;
+  --green-dim:  rgba(52,211,153,.12);
+  --red:        #f87171;
+  --blue:       #60a5fa;
+  --purple:     #a78bfa;
+
+  --radius:     20px;
+  --rsm:        10px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+html{height:100%;overflow:hidden;}
+
+body {
+  font-family:'DM Sans',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  height:100dvh;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  position:relative;
+}
+
+/* ── BACKGROUND GLOW ── */
+body::before {
+  content:'';position:fixed;top:-20%;left:-20%;
+  width:60%;height:60%;
+  background:radial-gradient(ellipse, rgba(245,166,35,.04) 0%, transparent 70%);
+  pointer-events:none;z-index:0;
+}
+
+/* ── TOP BAR ── */
+.topbar {
+  display:flex;align-items:center;gap:12px;
+  padding:12px 16px;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  position:relative;z-index:20;
+  flex-shrink:0;
+}
+.brand {
+  display:flex;align-items:center;gap:10px;flex:1;
+}
+.brand-icon {
+  width:42px;height:42px;border-radius:12px;
+  background:linear-gradient(135deg,#f5a623,#e08c10);
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;font-weight:800;color:#0b0d10;
+  letter-spacing:-1px;font-family:'Syne',sans-serif;
+  flex-shrink:0;
+}
+.brand-text {}
+.brand-name {
+  font-family:'Syne',sans-serif;font-size:16px;font-weight:800;
+  background:linear-gradient(90deg,var(--gold),#fbbf24);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.brand-sub {
+  font-size:11px;color:var(--text2);display:flex;align-items:center;gap:5px;margin-top:1px;
+}
+.live-dot {
+  width:6px;height:6px;border-radius:50%;background:var(--green);
+  animation:blink 2s infinite;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+.topbar-actions{display:flex;gap:8px;}
+.ico-btn {
+  width:34px;height:34px;border-radius:10px;
+  background:var(--surface2);border:1px solid var(--border);
+  color:var(--text2);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:15px;
+  transition:all .18s;text-decoration:none;
+}
+.ico-btn:hover{background:var(--gold-dim);color:var(--gold);border-color:var(--gold);}
+
+/* ── USER CHIP ── */
+.user-chip {
+  display:flex;align-items:center;gap:8px;
+  padding:4px 12px 4px 4px;
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:99px;cursor:pointer;
+  transition:all .18s;
+}
+.user-chip:hover{border-color:var(--gold);background:var(--gold-dim);}
+.uc-av {
+  width:28px;height:28px;border-radius:50%;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;color:#0b0d10;
+  font-family:'Syne',sans-serif;
+}
+.uc-name{font-size:12px;font-weight:500;color:var(--text2);}
+
+/* ── CHAT AREA ── */
+.chat-wrap {
+  flex:1;overflow:hidden;display:flex;flex-direction:column;position:relative;z-index:1;
+}
+.chat-area {
+  flex:1;overflow-y:auto;
+  padding:16px 14px 8px;
+  display:flex;flex-direction:column;gap:4px;
+  scroll-behavior:smooth;
+}
+.chat-area::-webkit-scrollbar{width:4px;}
+.chat-area::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px;}
+.chat-area::-webkit-scrollbar-track{background:transparent;}
+
+/* date sep */
+.date-sep {
+  display:flex;align-items:center;gap:10px;
+  font-size:11px;color:var(--text3);font-weight:500;
+  text-transform:uppercase;letter-spacing:.8px;margin:10px 0;
+}
+.date-sep::before,.date-sep::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* msg rows */
+.mr {
+  display:flex;gap:8px;align-items:flex-end;
+  animation:msgIn .22s ease;
+}
+@keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.mr.bot{flex-direction:row;}
+.mr.user{flex-direction:row-reverse;}
+
+.av {
+  width:30px;height:30px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;flex-shrink:0;
+}
+.av.bot-av{background:var(--gold-dim);border:1.5px solid var(--gold);}
+.av.usr-av{background:var(--user-bg);border:1.5px solid var(--user-bdr);}
+
+.msg-wrap{display:flex;flex-direction:column;max-width:80%;}
+.mr.user .msg-wrap{align-items:flex-end;}
+
+.bbl {
+  padding:10px 14px;
+  border-radius:var(--radius);
+  font-size:14px;line-height:1.6;
+  word-break:break-word;
+  position:relative;
+}
+.bot .bbl {
+  background:var(--surface2);border:1px solid var(--border);
+  border-bottom-left-radius:5px;color:var(--text);
+}
+.user .bbl {
+  background:var(--user-bg);border:1px solid var(--user-bdr);
+  border-bottom-right-radius:5px;color:var(--user-text);
+}
+.bbl-time{font-size:10px;color:var(--text3);margin-top:3px;}
+.mr.user .bbl-time{text-align:right;color:#8a6020;}
+
+/* typing */
+.typing-row{display:flex;gap:8px;align-items:center;}
+.typing-bbl{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius);border-bottom-left-radius:5px;
+  padding:12px 14px;display:flex;gap:4px;align-items:center;
+}
+.td{width:7px;height:7px;border-radius:50%;background:var(--text3);animation:td 1.2s infinite;}
+.td:nth-child(2){animation-delay:.2s}
+.td:nth-child(3){animation-delay:.4s}
+@keyframes td{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
+
+/* ── REPLY AREA ── */
+.reply-area {
+  padding:10px 14px 16px;
+  background:var(--surface);
+  border-top:1px solid var(--border);
+  flex-shrink:0;position:relative;z-index:10;
+}
+.reply-hint{font-size:11px;color:var(--text3);margin-bottom:8px;letter-spacing:.5px;text-transform:uppercase;}
+.reply-scroll{overflow-x:auto;padding-bottom:4px;}
+.reply-scroll::-webkit-scrollbar{height:0;}
+.reply-grid{display:flex;flex-wrap:wrap;gap:7px;}
+.reply-grid.nowrap{flex-wrap:nowrap;}
+
+.qb {
+  padding:9px 16px;border-radius:99px;
+  border:1.5px solid var(--border2);
+  background:var(--surface2);
+  color:var(--text);font-family:'DM Sans',sans-serif;
+  font-size:13px;font-weight:500;cursor:pointer;
+  white-space:nowrap;transition:all .16s;
+}
+.qb:hover{border-color:var(--gold);background:var(--gold-dim);color:var(--gold);}
+.qb.primary{
+  background:var(--gold);color:#0b0d10;border-color:var(--gold);font-weight:700;
+}
+.qb.primary:hover{background:var(--gold2);border-color:var(--gold2);}
+.qb.danger{border-color:var(--red);color:var(--red);}
+.qb.danger:hover{background:rgba(248,113,113,.1);}
+.qb.ghost{border-color:transparent;background:transparent;color:var(--text2);}
+
+/* ── CARDS ── */
+.card {
+  background:var(--surface2);border:1px solid var(--border2);
+  border-radius:var(--rsm);overflow:hidden;margin-top:8px;
+}
+.card-hd {
+  padding:9px 13px;
+  background:var(--gold-dim);border-bottom:1px solid var(--border);
+  font-size:11px;font-weight:700;color:var(--gold);
+  text-transform:uppercase;letter-spacing:.7px;
+}
+.card-row {
+  display:flex;justify-content:space-between;align-items:center;
+  padding:8px 13px;border-bottom:1px solid rgba(255,255,255,.04);
+  font-size:13px;
+}
+.card-row:last-child{border-bottom:none;}
+.cl{color:var(--text2);}
+.cv{font-weight:500;color:var(--text);}
+.cv.gold{color:var(--gold);}
+.cv.green{color:var(--green);}
+.cv.red{color:var(--red);}
+
+/* slot grid */
+.slot-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:8px;
+}
+@media(max-width:400px){.slot-grid{grid-template-columns:repeat(3,1fr);}}
+.slot-btn{
+  padding:9px 4px;border-radius:8px;
+  border:1px solid var(--border2);background:var(--surface2);
+  color:var(--text2);font-size:12px;font-weight:500;
+  cursor:pointer;text-align:center;
+  font-family:'DM Mono',monospace;transition:all .14s;
+}
+.slot-btn:hover:not(.busy):not(.past){border-color:var(--gold);color:var(--gold);background:var(--gold-dim);}
+.slot-btn.busy{color:var(--text3);cursor:default;opacity:.5;}
+.slot-btn.past{color:var(--text3);cursor:default;opacity:.35;}
+.slot-btn.full{color:var(--red);opacity:.6;cursor:default;}
+
+/* loc grid */
+.loc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;}
+.loc-btn{
+  padding:10px 11px;border-radius:10px;
+  border:1px solid var(--border2);background:var(--surface2);
+  color:var(--text);font-size:12px;font-weight:500;cursor:pointer;
+  text-align:left;display:flex;align-items:flex-start;gap:7px;
+  transition:all .14s;
+}
+.loc-btn:hover{border-color:var(--gold);background:var(--gold-dim);}
+.li{font-size:16px;flex-shrink:0;margin-top:-1px;}
+.ln{line-height:1.35;}
+
+/* route vis */
+.route-vis{padding:12px 13px;display:flex;flex-direction:column;gap:0;}
+.rs{display:flex;align-items:flex-start;gap:10px;}
+.rs-left{display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:18px;}
+.rd{
+  width:12px;height:12px;border-radius:50%;
+  border:2px solid var(--gold);background:var(--bg);flex-shrink:0;
+}
+.rd.filled{background:var(--gold);}
+.rd.dest{border-color:var(--red);background:var(--red);}
+.rl{width:2px;flex:1;min-height:18px;background:linear-gradient(to bottom,var(--gold),rgba(245,166,35,.2));margin:0 auto;}
+.ri{padding-bottom:13px;flex:1;}
+.rn{font-size:13px;font-weight:600;color:var(--text);}
+.rs2{font-size:11px;color:var(--text3);margin-top:2px;}
+
+/* status banners */
+.banner{
+  display:flex;align-items:center;gap:9px;
+  border-radius:var(--rsm);padding:10px 13px;
+  margin-top:8px;font-size:13px;font-weight:500;
+}
+.banner.gold{background:var(--gold-dim);border:1px solid rgba(245,166,35,.3);color:var(--gold);}
+.banner.green{background:var(--green-dim);border:1px solid rgba(52,211,153,.3);color:var(--green);}
+.banner.blue{background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.3);color:var(--blue);}
+.banner.red{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:var(--red);}
+
+/* progress */
+.prog-wrap{background:var(--border);border-radius:99px;height:5px;margin-top:6px;overflow:hidden;}
+.prog-bar{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--gold2),var(--gold));transition:width .5s ease;}
+
+/* login screen overlay */
+.login-overlay{
+  position:fixed;inset:0;z-index:100;
+  background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:24px;
+}
+.login-card{
+  width:100%;max-width:360px;
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:20px;padding:28px 24px;
+}
+.login-logo{
+  display:flex;align-items:center;gap:12px;margin-bottom:24px;
+}
+.login-logo-icon{
+  width:52px;height:52px;border-radius:14px;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#0b0d10;
+}
+.login-logo-text{}
+.login-app-name{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--gold);}
+.login-app-sub{font-size:12px;color:var(--text2);}
+.login-tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--surface2);border-radius:10px;padding:3px;}
+.ltab{
+  flex:1;padding:8px;border-radius:8px;font-size:13px;font-weight:600;
+  cursor:pointer;text-align:center;border:none;background:transparent;
+  color:var(--text2);transition:all .18s;font-family:'DM Sans',sans-serif;
+}
+.ltab.active{background:var(--gold);color:#0b0d10;}
+.login-field{margin-bottom:14px;}
+.login-label{font-size:12px;color:var(--text2);margin-bottom:6px;display:block;font-weight:500;}
+.login-input{
+  width:100%;padding:11px 14px;border-radius:10px;
+  border:1.5px solid var(--border2);background:var(--surface2);
+  color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;
+  transition:border-color .18s;outline:none;
+}
+.login-input:focus{border-color:var(--gold);}
+.login-btn{
+  width:100%;padding:12px;border-radius:10px;
+  background:var(--gold);color:#0b0d10;
+  font-family:'Syne',sans-serif;font-size:15px;font-weight:700;
+  border:none;cursor:pointer;margin-top:6px;
+  transition:background .18s;
+}
+.login-btn:hover{background:var(--gold2);}
+.login-err{font-size:12px;color:var(--red);margin-top:8px;text-align:center;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN OVERLAY -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-icon">OR</div>
+      <div class="login-logo-text">
+        <div class="login-app-name">Ostello Rides</div>
+        <div class="login-app-sub">CBD Belapur, Navi Mumbai</div>
+      </div>
+    </div>
+
+    <div class="login-tabs">
+      <button class="ltab active" id="tabLogin" onclick="switchTab('login')">Sign In</button>
+      <button class="ltab" id="tabReg" onclick="switchTab('register')">Register</button>
+    </div>
+
+    <!-- LOGIN FORM -->
+    <div id="loginForm">
+      <div class="login-field">
+        <label class="login-label">Phone Number</label>
+        <input class="login-input" id="lPhone" type="tel" placeholder="9876543210" maxlength="10"/>
+      </div>
+      <div class="login-field">
+        <label class="login-label">4-digit PIN</label>
+        <input class="login-input" id="lPin" type="password" placeholder="••••" maxlength="4"/>
+      </div>
+      <button class="login-btn" onclick="doLogin()">Sign In →</button>
+      <div class="login-err" id="loginErr"></div>
+    </div>
+
+    <!-- REGISTER FORM -->
+    <div id="registerForm" style="display:none">
+      <div class="login-field">
+        <label class="login-label">Full Name</label>
+        <input class="login-input" id="rName" type="text" placeholder="Your name"/>
+      </div>
+      <div class="login-field">
+        <label class="login-label">Phone Number</label>
+        <input class="login-input" id="rPhone" type="tel" placeholder="9876543210" maxlength="10"/>
+      </div>
+      <div class="login-field">
+        <label class="login-label">Room Number</label>
+        <input class="login-input" id="rRoom" type="text" placeholder="e.g. 204"/>
+      </div>
+      <div class="login-field">
+        <label class="login-label">Create 4-digit PIN</label>
+        <input class="login-input" id="rPin" type="password" placeholder="••••" maxlength="4"/>
+      </div>
+      <button class="login-btn" onclick="doRegister()">Register →</button>
+      <div class="login-err" id="regErr"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">OR</div>
+    <div class="brand-text">
+      <div class="brand-name">Ostello Rides</div>
+      <div class="brand-sub"><span class="live-dot"></span>Belapur • Navi Mumbai</div>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <div class="user-chip" id="userChip" onclick="showMyBookings()">
+      <div class="uc-av" id="ucAv">?</div>
+      <div class="uc-name" id="ucName">Loading…</div>
+    </div>
+    <a href="/admin" class="ico-btn" title="Admin">⚙</a>
+    <div class="ico-btn" onclick="resetChat()" title="Restart">↺</div>
+  </div>
+</div>
+
+<!-- CHAT -->
+<div class="chat-wrap">
+  <div class="chat-area" id="chatArea"></div>
+</div>
+
+<!-- QUICK REPLIES -->
+<div class="reply-area" id="replyArea">
+  <div class="reply-hint" id="replyHint">Choose an option</div>
+  <div class="reply-scroll">
+    <div class="reply-grid" id="replyGrid"></div>
+  </div>
+</div>
+
+<script>
+// ─── GLOBAL STATE ────────────────────────────────────────────────────────────
+const S = {
+  user: null,
+  booking: {},
+  locations: [],
+  gpsLocation: null,
+};
+
+// ─── API ─────────────────────────────────────────────────────────────────────
+async function api(path, method='GET', body=null) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' }, credentials:'include' };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch('/api' + path, opts);
+  return r.json();
+}
+
+// ─── LOGIN / REGISTER ─────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.getElementById('tabLogin').classList.toggle('active', tab==='login');
+  document.getElementById('tabReg').classList.toggle('active', tab==='register');
+  document.getElementById('loginForm').style.display  = tab==='login'    ? '' : 'none';
+  document.getElementById('registerForm').style.display = tab==='register' ? '' : 'none';
+}
+
+async function doLogin() {
+  const phone = document.getElementById('lPhone').value.trim();
+  const pin   = document.getElementById('lPin').value.trim();
+  const res   = await api('/auth/login','POST',{phone,pin});
+  if (res.error) { document.getElementById('loginErr').textContent = res.error; return; }
+  S.user = res;
+  afterLogin();
+}
+
+async function doRegister() {
+  const name  = document.getElementById('rName').value.trim();
+  const phone = document.getElementById('rPhone').value.trim();
+  const room  = document.getElementById('rRoom').value.trim();
+  const pin   = document.getElementById('rPin').value.trim();
+  if (pin.length !== 4) { document.getElementById('regErr').textContent='PIN must be 4 digits'; return; }
+  const res = await api('/auth/register','POST',{name,phone,room_number:room,pin});
+  if (res.error) { document.getElementById('regErr').textContent = res.error; return; }
+  S.user = res;
+  afterLogin();
+}
+
+function afterLogin() {
+  document.getElementById('loginOverlay').style.display = 'none';
+  const initials = S.user.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('ucAv').textContent   = initials;
+  document.getElementById('ucName').textContent = S.user.name.split(' ')[0];
+  loadLocations();
+  startFlow();
+}
+
+async function checkSession() {
+  const res = await api('/auth/me');
+  if (res.logged_in) {
+    S.user = res;
+    document.getElementById('loginOverlay').style.display = 'none';
+    const initials = S.user.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    document.getElementById('ucAv').textContent   = initials;
+    document.getElementById('ucName').textContent = S.user.name.split(' ')[0];
+    loadLocations();
+    startFlow();
+  }
+}
+
+async function loadLocations() {
+  const locs = await api('/locations');
+  S.locations = locs;
+}
+
+// ─── TIME HELPERS ─────────────────────────────────────────────────────────────
+function t2m(t){ const[h,m]=t.split(':').map(Number); return h*60+m; }
+function m2t(m){ return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`; }
+
+const TIME_SLOTS = [];
+for(let h=6;h<=22;h++) for(let m=0;m<60;m+=30) TIME_SLOTS.push(m2t(h*60+m));
+
+// ─── DOM HELPERS ──────────────────────────────────────────────────────────────
+const chatEl   = document.getElementById('chatArea');
+const replyEl  = document.getElementById('replyGrid');
+const hintEl   = document.getElementById('replyHint');
+const replyArea= document.getElementById('replyArea');
+
+function ts(){ const d=new Date(); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+
+function addMsg(who, html) {
+  const row = document.createElement('div');
+  row.className = `mr ${who}`;
+  const avClass = who==='bot' ? 'bot-av' : 'usr-av';
+  const icon    = who==='bot' ? '🚖' : '👤';
+  row.innerHTML = `
+    <div class="av ${avClass}">${icon}</div>
+    <div class="msg-wrap">
+      <div class="bbl">${html}</div>
+      <div class="bbl-time">${ts()}</div>
+    </div>`;
+  chatEl.appendChild(row);
+  chatEl.scrollTop = chatEl.scrollHeight;
+  return row;
+}
+
+function addTyping() {
+  const row = document.createElement('div');
+  row.className = 'typing-row'; row.id = 'typing';
+  row.innerHTML = `<div class="av bot-av">🚖</div>
+    <div class="typing-bbl"><div class="td"></div><div class="td"></div><div class="td"></div></div>`;
+  chatEl.appendChild(row);
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+function rmTyping(){ const t=document.getElementById('typing'); if(t)t.remove(); }
+
+function botSay(html, delay=700) {
+  return new Promise(res => {
+    addTyping();
+    setTimeout(() => { rmTyping(); addMsg('bot', html); res(); }, delay);
+  });
+}
+function userSay(text){ addMsg('user', text); }
+
+function setReplies(buttons, hint='Choose an option', nowrap=false) {
+  replyEl.innerHTML = '';
+  hintEl.textContent = hint;
+  replyArea.style.display = buttons.length ? '' : 'none';
+  replyEl.className = 'reply-grid' + (nowrap ? ' nowrap' : '');
+  buttons.forEach(b => {
+    const el = document.createElement('button');
+    el.className = `qb ${b.cls||''}`;
+    el.textContent = b.label;
+    el.onclick = () => b.fn();
+    replyEl.appendChild(el);
+  });
+}
+
+function addEl(el) {
+  chatEl.appendChild(el);
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+// ─── OSRM ROUTE ───────────────────────────────────────────────────────────────
+async function getRoute(stops) {
+  try {
+    const res = await api('/route', 'POST', { stops });
+    return res.error ? null : res;
+  } catch { return null; }
+}
+
+// ─── MAIN FLOW ────────────────────────────────────────────────────────────────
+
+async function startFlow() {
+  await botSay(`👋 Hey <strong>${S.user.name.split(' ')[0]}</strong>! Welcome to <strong>Ostello Rides</strong>.<br>
+    <span style="color:var(--text2);font-size:13px">Smart shared cabs from Parsik Hill, Belapur 🏠</span>`, 600);
+
+  await botSay(`What would you like to do?`, 800);
+
+  setReplies([
+    { label:'🚐 Book a Drop',    cls:'primary', fn:()=>startBooking('drop')    },
+    { label:'📍 Book a Pickup',  fn:()=>startBooking('pickup')  },
+    { label:'📋 My Bookings',    fn:showMyBookings                },
+  ]);
+}
+
+async function startBooking(type) {
+  S.booking = { type };
+  userSay(type==='drop' ? '🚐 Book a Drop' : '📍 Book a Pickup');
+
+  await botSay(
+    type==='drop'
+      ? `Great! <strong>Where are you dropping off to?</strong><br><span style="color:var(--text2);font-size:12px">Select a destination in Navi Mumbai</span>`
+      : `Sure! <strong>Where should we pick you up from?</strong><br><span style="color:var(--text2);font-size:12px">Select location or use your GPS</span>`
+  );
+
+  showLocationPicker(type);
+}
+
+function showLocationPicker(type) {
+  replyEl.innerHTML = '';
+  hintEl.textContent = 'Select location';
+  replyArea.style.display = '';
+
+  const locs = S.locations.filter(l => {
+    if (type==='drop') return !l.label.includes('Ostello');
+    return true;
+  });
+
+  const grid = document.createElement('div');
+  grid.className = 'loc-grid';
+
+  locs.forEach(loc => {
+    const btn = document.createElement('button');
+    btn.className = 'loc-btn';
+    btn.innerHTML = `<span class="li">${loc.icon}</span><span class="ln">${loc.label}</span>`;
+    btn.onclick = () => selectLocation(loc);
+    grid.appendChild(btn);
+  });
+
+  replyEl.appendChild(grid);
+
+  // GPS button
+  const gpsBtn = document.createElement('button');
+  gpsBtn.className = 'qb';
+  gpsBtn.style.marginTop = '8px';
+  gpsBtn.innerHTML = '📡 Use My Current Location (GPS)';
+  gpsBtn.onclick = useGPS;
+  replyEl.appendChild(gpsBtn);
+}
+
+async function useGPS() {
+  replyEl.innerHTML = '';
+  hintEl.textContent = 'Getting GPS…';
+  userSay('📡 Use My GPS Location');
+  await botSay('Fetching your GPS location…', 300);
+
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const { latitude: lat, longitude: lng } = pos.coords;
+    S.gpsLocation = { lat, lon: lng };
+    const label = `My Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+    await botSay(`📍 Got it! Using your current location.`);
+    selectLocation({ id:'gps', label, icon:'📍', lat, lon: lng });
+  }, async () => {
+    await botSay(`⚠️ Couldn't get GPS. Please select manually.`);
+    showLocationPicker(S.booking.type);
+  }, { timeout: 8000 });
+}
+
+async function selectLocation(loc) {
+  replyEl.innerHTML = ''; replyArea.style.display='none';
+  S.booking.location = loc;
+  userSay(`${loc.icon} ${loc.label}`);
+
+  await botSay(`✅ <strong>${loc.label}</strong> — noted.<br>What time do you prefer?`);
+  showTimePicker();
+}
+
+function showTimePicker() {
+  replyEl.innerHTML = '';
+  hintEl.textContent = 'Select time slot';
+  replyArea.style.display = '';
+
+  const nowMins = t2m(ts());
+  const grid = document.createElement('div');
+  grid.className = 'slot-grid';
+
+  TIME_SLOTS.forEach(slot => {
+    const btn  = document.createElement('button');
+    const past = t2m(slot) <= nowMins;
+    btn.className = `slot-btn${past ? ' past' : ''}`;
+    btn.textContent = slot;
+    if (!past) btn.onclick = () => selectTime(slot);
+    grid.appendChild(btn);
+  });
+
+  replyEl.appendChild(grid);
+}
+
+async function selectTime(slot) {
+  replyEl.innerHTML = ''; replyArea.style.display='none';
+  S.booking.preferredTime = slot;
+  userSay(`🕐 ${slot}`);
+
+  await botSay(`⏳ Checking schedule and grouping with nearby riders…`, 400);
+
+  // Call the booking API
+  const res = await api('/book', 'POST', {
+    type:           S.booking.type,
+    lat:            S.booking.location.lat,
+    lon:            S.booking.location.lon || S.booking.location.lng,
+    location_label: S.booking.location.label,
+    preferred_time: slot,
+  });
+
+  if (res.error) {
+    await botSay(`<div class="banner red">⚠️ ${res.error}</div>`);
+    setReplies([{ label:'↩ Back', fn:startFlow }]);
+    return;
+  }
+
+  S.booking.result = res;
+  const adjusted = res.adjusted;
+  const pax      = res.pax_in_group;
+
+  let clusterNote = '';
+  if (adjusted) {
+    clusterNote = `<div class="banner gold">⚡ Smart grouping: adjusted to <strong>${res.scheduled_time}</strong> (shared with ${pax-1} other${pax>2?'s':''})</div>`;
+  }
+
+  await botSay(
+    `🎉 <strong>Booking #${res.booking_id} confirmed!</strong><br>
+    Scheduled time: <strong>${res.scheduled_time}</strong>` + clusterNote,
+    700
+  );
+
+  // Show route
+  await showRoute(res);
+  await simulateDriverUpdates();
+}
+
+async function showRoute(res) {
+  const ostello = { lat:19.0176, lon:73.0360, label:'Ostello, Parsik Hill' };
+  const dest    = S.booking.location;
+  const stops   = S.booking.type==='drop'
+    ? [ostello, { lat:dest.lat, lon:dest.lon||dest.lng, label:dest.label }]
+    : [{ lat:dest.lat, lon:dest.lon||dest.lng, label:dest.label }, ostello];
+
+  const route = await getRoute(stops);
+
+  const stopsHtml = stops.map((s, i) => `
+    <div class="rs">
+      <div class="rs-left">
+        <div class="rd ${i===0?'filled':''} ${i===stops.length-1?'dest':''}"></div>
+        ${i<stops.length-1 ? '<div class="rl"></div>' : ''}
+      </div>
+      <div class="ri">
+        <div class="rn">${s.label}</div>
+        <div class="rs2">${i===0?'Start':i===stops.length-1?'Final stop':`Stop ${i}`}</div>
+      </div>
+    </div>`).join('');
+
+  const routeMeta = route
+    ? `<div class="card-row"><span class="cl">Distance</span><span class="cv">${route.distance_km} km</span></div>
+       <div class="card-row"><span class="cl">Est. time</span><span class="cv">${route.duration_min} min</span></div>`
+    : '';
+
+  await botSay(`
+    <div class="card">
+      <div class="card-hd">🗺 Your Route — OSRM Optimized</div>
+      <div class="route-vis">${stopsHtml}</div>
+      ${routeMeta ? `<div style="border-top:1px solid var(--border)">${routeMeta}</div>` : ''}
+    </div>
+    <div class="card">
+      <div class="card-hd">📋 Booking Summary</div>
+      <div class="card-row"><span class="cl">Booking ID</span><span class="cv gold">#${res.booking_id}</span></div>
+      <div class="card-row"><span class="cl">Type</span><span class="cv">${S.booking.type==='drop'?'🚐 Drop':'📍 Pickup'}</span></div>
+      <div class="card-row"><span class="cl">Scheduled</span><span class="cv green">${res.scheduled_time}</span></div>
+      <div class="card-row"><span class="cl">Passengers</span><span class="cv">${res.pax_in_group}/10</span></div>
+    </div>
+  `, 900);
+}
+
+async function simulateDriverUpdates() {
+  setReplies([]);
+
+  setTimeout(async() => {
+    addMsg('bot', `<div class="banner blue">🚖 Driver assigned — <strong>Ramesh Kumar · MH-43-AB-1234</strong></div>`);
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }, 3000);
+
+  setTimeout(() => {
+    addMsg('bot', `📍 Driver is on the way<div class="prog-wrap"><div class="prog-bar" style="width:35%"></div></div>`);
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }, 7000);
+
+  setTimeout(() => {
+    addMsg('bot', `⏱ Arriving in <strong>4 minutes</strong><div class="prog-wrap"><div class="prog-bar" style="width:65%"></div></div>`);
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }, 12000);
+
+  setTimeout(() => {
+    addMsg('bot', `✅ <strong>Driver has arrived!</strong> Please proceed to the gate.<div class="prog-wrap"><div class="prog-bar" style="width:100%"></div></div>`);
+    chatEl.scrollTop = chatEl.scrollHeight;
+    setReplies([
+      { label:'🏠 Home', cls:'primary', fn:startFlow },
+      { label:'📋 My Bookings', fn:showMyBookings },
+    ]);
+  }, 18000);
+}
+
+async function showMyBookings() {
+  replyEl.innerHTML = ''; replyArea.style.display='none';
+  userSay('📋 My Bookings');
+  await botSay('Fetching your bookings for today…', 400);
+
+  const bookings = await api('/bookings/my');
+
+  if (!bookings.length) {
+    await botSay(`You have <strong>no bookings</strong> for today yet.`, 300);
+  } else {
+    const rows = bookings.map(b => `
+      <div class="card-row">
+        <span class="cl">${b.type==='drop'?'🚐':' 📍'} ${b.type} @ ${b.scheduled_time}</span>
+        <span class="cv ${b.status==='assigned'?'green':b.status==='cancelled'?'red':''}">${b.location_label}</span>
+      </div>`).join('');
+    await botSay(`Here are your bookings today:<div class="card"><div class="card-hd">My Bookings</div>${rows}</div>`, 300);
+  }
+
+  setReplies([
+    { label:'🏠 Home', cls:'primary', fn:startFlow },
+    { label:'🚐 New Drop',    fn:()=>startBooking('drop')   },
+    { label:'📍 New Pickup',  fn:()=>startBooking('pickup') },
+  ]);
+}
+
+async function resetChat() {
+  chatEl.innerHTML = '';
+  S.booking = {};
+  const sep = document.createElement('div');
+  sep.className = 'date-sep'; sep.textContent = 'Today';
+  chatEl.appendChild(sep);
+  if (S.user) startFlow();
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+(async () => {
+  const sep = document.createElement('div');
+  sep.className = 'date-sep'; sep.textContent = 'Today';
+  chatEl.appendChild(sep);
+
+  await checkSession();
+})();
+</script>
+</body>
+</html>

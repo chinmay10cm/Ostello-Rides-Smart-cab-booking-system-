@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Ostello Rides — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0b0d10;--surface:#13161c;--surface2:#1a1e27;--border:#252b38;--border2:#2e3648;
+  --gold:#f5a623;--gold2:#e08c10;--gold-dim:rgba(245,166,35,.12);
+  --text:#e8ecf4;--text2:#8892a4;--text3:#454f63;
+  --green:#34d399;--red:#f87171;--blue:#60a5fa;--purple:#a78bfa;
+  --rs:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* NAV */
+.nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 24px;background:var(--surface);border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:10;
+}
+.nav-brand{display:flex;align-items:center;gap:10px;}
+.nav-icon{
+  width:38px;height:38px;border-radius:10px;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:#0b0d10;
+}
+.nav-title{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--gold);}
+.nav-sub{font-size:12px;color:var(--text2);}
+.nav-actions{display:flex;gap:8px;}
+.nav-btn{
+  padding:8px 16px;border-radius:8px;border:1px solid var(--border2);
+  background:var(--surface2);color:var(--text2);font-size:13px;
+  cursor:pointer;transition:all .16s;font-family:'DM Sans',sans-serif;
+}
+.nav-btn:hover{border-color:var(--gold);color:var(--gold);}
+.nav-btn.primary{background:var(--gold);color:#0b0d10;border-color:var(--gold);font-weight:600;}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:20px 24px 0;}
+@media(max-width:600px){.stats{grid-template-columns:1fr 1fr;}}
+.stat-card{
+  background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:16px;
+}
+.stat-label{font-size:12px;color:var(--text2);font-weight:500;text-transform:uppercase;letter-spacing:.5px;}
+.stat-val{font-size:28px;font-weight:700;font-family:'Syne',sans-serif;margin-top:4px;color:var(--text);}
+.stat-val.gold{color:var(--gold);}
+.stat-val.green{color:var(--green);}
+.stat-val.red{color:var(--red);}
+.stat-val.blue{color:var(--blue);}
+
+/* MAIN LAYOUT */
+.main{padding:20px 24px;display:flex;gap:20px;align-items:flex-start;}
+@media(max-width:700px){.main{flex-direction:column;}}
+
+/* GROUPS */
+.groups-panel{flex:1;min-width:0;}
+.section-hd{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:14px;
+}
+.section-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--text);}
+.refresh-btn{
+  padding:6px 12px;border-radius:8px;border:1px solid var(--border2);
+  background:transparent;color:var(--text2);font-size:12px;cursor:pointer;
+  transition:all .15s;font-family:'DM Sans',sans-serif;
+}
+.refresh-btn:hover{border-color:var(--gold);color:var(--gold);}
+
+.group-card{
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:14px;overflow:hidden;margin-bottom:14px;
+}
+.group-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;background:var(--gold-dim);border-bottom:1px solid var(--border);
+}
+.group-label{
+  display:flex;align-items:center;gap:8px;
+}
+.group-type{
+  font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;
+  text-transform:uppercase;letter-spacing:.5px;
+}
+.group-type.drop{background:rgba(96,165,250,.15);color:var(--blue);}
+.group-type.pickup{background:rgba(167,139,250,.15);color:var(--purple);}
+.group-time{font-family:'DM Mono',monospace;font-size:14px;font-weight:500;color:var(--gold);}
+.group-pax{font-size:12px;color:var(--text2);}
+.group-status{
+  font-size:11px;padding:3px 10px;border-radius:99px;font-weight:600;text-transform:uppercase;
+}
+.gs-open{background:rgba(52,211,153,.1);color:var(--green);}
+.gs-assigned{background:rgba(96,165,250,.1);color:var(--blue);}
+.gs-in_progress{background:rgba(245,166,35,.1);color:var(--gold);}
+.gs-completed{background:rgba(255,255,255,.05);color:var(--text3);}
+
+.pax-table{width:100%;border-collapse:collapse;}
+.pax-th{
+  padding:8px 16px;font-size:11px;color:var(--text2);font-weight:600;
+  text-align:left;border-bottom:1px solid var(--border);
+  text-transform:uppercase;letter-spacing:.5px;background:var(--surface2);
+}
+.pax-td{
+  padding:9px 16px;font-size:13px;border-bottom:1px solid rgba(255,255,255,.04);
+  color:var(--text);
+}
+.pax-td:last-child,.pax-th:last-child{text-align:right;}
+tr:last-child .pax-td{border-bottom:none;}
+tr:hover .pax-td{background:rgba(255,255,255,.02);}
+
+.route-chip{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:3px 9px;border-radius:99px;font-size:11px;
+  background:var(--gold-dim);color:var(--gold);border:1px solid rgba(245,166,35,.2);
+}
+
+/* group actions */
+.group-actions{
+  display:flex;gap:8px;padding:10px 16px;
+  background:var(--surface2);border-top:1px solid var(--border);
+}
+.act-btn{
+  padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;
+  border:1px solid var(--border2);background:transparent;
+  color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;
+  transition:all .15s;
+}
+.act-btn:hover{border-color:var(--gold);color:var(--gold);}
+.act-btn.assign{background:var(--gold);color:#0b0d10;border-color:var(--gold);}
+.act-btn.assign:hover{background:var(--gold2);}
+
+/* VEHICLES SIDEBAR */
+.vehicles-panel{width:280px;flex-shrink:0;}
+.vehicle-card{
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:12px;padding:14px 16px;margin-bottom:10px;
+}
+.veh-name{font-size:14px;font-weight:600;}
+.veh-plate{font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);margin-top:3px;}
+.veh-cap{font-size:12px;color:var(--text3);margin-top:6px;}
+.veh-status{
+  margin-top:8px;font-size:11px;font-weight:600;padding:3px 10px;
+  border-radius:99px;display:inline-block;
+  background:rgba(52,211,153,.1);color:var(--green);
+}
+
+/* modal */
+.modal-bg{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:50;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.modal{
+  background:var(--surface);border:1px solid var(--border2);border-radius:16px;
+  padding:24px;width:100%;max-width:380px;
+}
+.modal-title{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;margin-bottom:16px;}
+.modal-input{
+  width:100%;padding:10px 14px;border-radius:10px;
+  border:1.5px solid var(--border2);background:var(--surface2);
+  color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;
+  outline:none;margin-bottom:12px;transition:border-color .18s;
+}
+.modal-input:focus{border-color:var(--gold);}
+.modal-actions{display:flex;gap:8px;margin-top:4px;}
+.modal-btn{
+  flex:1;padding:10px;border-radius:8px;font-size:13px;font-weight:600;
+  border:1px solid var(--border2);background:var(--surface2);
+  color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;
+}
+.modal-btn.confirm{background:var(--gold);color:#0b0d10;border-color:var(--gold);}
+
+select.modal-input{cursor:pointer;}
+
+.toast{
+  position:fixed;bottom:24px;right:24px;z-index:100;
+  background:var(--surface);border:1px solid var(--gold);border-radius:10px;
+  padding:12px 18px;font-size:13px;font-weight:500;color:var(--gold);
+  animation:toastIn .25s ease;
+}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+.empty{padding:32px;text-align:center;color:var(--text3);font-size:14px;}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-brand">
+    <div class="nav-icon">OR</div>
+    <div>
+      <div class="nav-title">Ostello Rides — Admin</div>
+      <div class="nav-sub">CBD Belapur, Navi Mumbai</div>
+    </div>
+  </div>
+  <div class="nav-actions">
+    <a href="/" class="nav-btn">← App</a>
+    <button class="nav-btn primary" onclick="refresh()">↻ Refresh</button>
+  </div>
+</nav>
+
+<!-- STATS -->
+<div class="stats" id="statsRow">
+  <div class="stat-card"><div class="stat-label">Total Bookings</div><div class="stat-val gold" id="sTot">—</div></div>
+  <div class="stat-card"><div class="stat-label">Pending Groups</div><div class="stat-val blue" id="sPend">—</div></div>
+  <div class="stat-card"><div class="stat-label">Passengers Today</div><div class="stat-val green" id="sPax">—</div></div>
+  <div class="stat-card"><div class="stat-label">Cancelled</div><div class="stat-val red" id="sCanc">—</div></div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <!-- GROUPS -->
+  <div class="groups-panel">
+    <div class="section-hd">
+      <div class="section-title">Today's Ride Groups</div>
+      <button class="refresh-btn" onclick="refresh()">Refresh</button>
+    </div>
+    <div id="groupsList"><div class="empty">Loading…</div></div>
+  </div>
+
+  <!-- VEHICLES SIDEBAR -->
+  <div class="vehicles-panel">
+    <div class="section-hd" style="margin-bottom:12px">
+      <div class="section-title">Vehicles</div>
+    </div>
+    <div id="vehiclesList"><div class="empty">Loading…</div></div>
+  </div>
+</div>
+
+<!-- ASSIGN MODAL -->
+<div class="modal-bg" id="assignModal" style="display:none">
+  <div class="modal">
+    <div class="modal-title">🚗 Assign Vehicle</div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:14px">Select a vehicle for this ride group:</p>
+    <select class="modal-input" id="vehicleSelect"></select>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn confirm" onclick="confirmAssign()">Assign</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESCHEDULE MODAL -->
+<div class="modal-bg" id="reschedModal" style="display:none">
+  <div class="modal">
+    <div class="modal-title">⏱ Reschedule Group</div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:14px">Set new time for this group:</p>
+    <input class="modal-input" type="time" id="newTimeInput"/>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn confirm" onclick="confirmReschedule()">Update</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let vehicles = [];
+let activeGroupId = null;
+let activeModal = null;
+
+async function api(path, method='GET', body=null) {
+  const opts = { method, headers:{'Content-Type':'application/json'}, credentials:'include' };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch('/api' + path, opts);
+  return r.json();
+}
+
+function toast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+function closeModal() {
+  document.getElementById('assignModal').style.display   = 'none';
+  document.getElementById('reschedModal').style.display  = 'none';
+  activeGroupId = null; activeModal = null;
+}
+
+async function refresh() {
+  const [groups, vehs] = await Promise.all([
+    api('/admin/groups'),
+    api('/admin/vehicles'),
+  ]);
+  vehicles = vehs;
+  renderVehicles(vehs);
+  renderGroups(groups);
+  updateStats(groups);
+}
+
+function updateStats(groups) {
+  let tot=0, pend=0, pax=0, canc=0;
+  groups.forEach(g => {
+    pax += g.pax || 0;
+    tot += g.pax || 0;
+    if (g.status === 'open') pend++;
+  });
+  document.getElementById('sTot').textContent  = tot;
+  document.getElementById('sPend').textContent = pend;
+  document.getElementById('sPax').textContent  = pax;
+  document.getElementById('sCanc').textContent = canc;
+}
+
+function renderVehicles(vehs) {
+  const el = document.getElementById('vehiclesList');
+  if (!vehs.length) { el.innerHTML = '<div class="empty">No vehicles</div>'; return; }
+  el.innerHTML = vehs.map(v => `
+    <div class="vehicle-card">
+      <div class="veh-name">🚖 ${v.driver_name}</div>
+      <div class="veh-plate">${v.plate}</div>
+      <div class="veh-cap">Capacity: ${v.capacity} passengers</div>
+      <div class="veh-status">Available</div>
+    </div>`).join('');
+}
+
+function renderGroups(groups) {
+  const el = document.getElementById('groupsList');
+  if (!groups.length) { el.innerHTML='<div class="empty">No groups today yet.</div>'; return; }
+
+  el.innerHTML = groups.map(g => {
+    const paxRows = (g.passengers||[]).map(p => `
+      <tr>
+        <td class="pax-td">${p.name}</td>
+        <td class="pax-td">${p.room_number||'—'}</td>
+        <td class="pax-td">${p.location_label}</td>
+        <td class="pax-td">${p.type==='drop'?'🚐 Drop':'📍 Pick'}</td>
+      </tr>`).join('') || `<tr><td class="pax-td" colspan="4" style="color:var(--text3);text-align:center">No passengers yet</td></tr>`;
+
+    const routeInfo = g.route_data
+      ? `<span class="route-chip">🗺 ${g.route_data.distance_km}km · ${g.route_data.duration_min}min</span>`
+      : '';
+
+    const statusCls = {open:'gs-open',assigned:'gs-assigned',in_progress:'gs-in_progress',completed:'gs-completed'}[g.status]||'gs-open';
+    const typeCls   = g.type==='drop'?'drop':'pickup';
+
+    return `
+    <div class="group-card">
+      <div class="group-header">
+        <div class="group-label">
+          <span class="group-type ${typeCls}">${g.type}</span>
+          <span class="group-time">${g.scheduled_time}</span>
+          <span class="group-pax">${g.pax||0}/10 pax</span>
+          ${routeInfo}
+        </div>
+        <span class="group-status ${statusCls}">${g.status}</span>
+      </div>
+
+      <table class="pax-table">
+        <thead>
+          <tr>
+            <th class="pax-th">Name</th>
+            <th class="pax-th">Room</th>
+            <th class="pax-th">Location</th>
+            <th class="pax-th">Type</th>
+          </tr>
+        </thead>
+        <tbody>${paxRows}</tbody>
+      </table>
+
+      ${g.driver_name ? `<div style="padding:8px 16px;font-size:12px;color:var(--green);background:rgba(52,211,153,.06);border-top:1px solid var(--border)">🚖 ${g.driver_name} · ${g.plate}</div>` : ''}
+
+      <div class="group-actions">
+        <button class="act-btn assign" onclick="openAssign(${g.id})">
+          ${g.vehicle_id ? '✎ Reassign Vehicle' : '+ Assign Vehicle'}
+        </button>
+        <button class="act-btn" onclick="openReschedule(${g.id})">⏱ Reschedule</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openAssign(gid) {
+  activeGroupId = gid; activeModal = 'assign';
+  const sel = document.getElementById('vehicleSelect');
+  sel.innerHTML = vehicles.map(v => `<option value="${v.id}">${v.driver_name} — ${v.plate}</option>`).join('');
+  document.getElementById('assignModal').style.display = 'flex';
+}
+
+async function confirmAssign() {
+  const vid = parseInt(document.getElementById('vehicleSelect').value);
+  const res = await api(`/admin/groups/${activeGroupId}/assign`, 'POST', { vehicle_id: vid });
+  closeModal();
+  toast(res.message || 'Assigned!');
+  refresh();
+}
+
+function openReschedule(gid) {
+  activeGroupId = gid; activeModal = 'reschedule';
+  document.getElementById('reschedModal').style.display = 'flex';
+}
+
+async function confirmReschedule() {
+  const t = document.getElementById('newTimeInput').value;
+  if (!t) { toast('Select a time'); return; }
+  const res = await api(`/admin/groups/${activeGroupId}/reschedule`, 'POST', { new_time: t });
+  closeModal();
+  toast(res.message || 'Rescheduled!');
+  refresh();
+}
+
+// init
+refresh();
+</script>
+</body>
+</html>
