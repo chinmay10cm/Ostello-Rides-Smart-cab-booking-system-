@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
-<title>Ostello Rides — Navi Mumbai</title>
+<title>OstelloRides — Navi Mumbai</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
 :root {
@@ -14,15 +14,19 @@
   --border:     #252b38;
   --border2:    #2e3648;
 
-  /* Ostello brand — warm amber/gold on dark */
-  --gold:       #f5a623;
-  --gold2:      #e08c10;
-  --gold-dim:   rgba(245,166,35,.13);
-  --gold-glow:  rgba(245,166,35,.22);
+  /* Ostello brand — violet, pink, blue */
+  --brand-blue:   #3b82f6;
+  --brand-purple: #a855f7;
+  --brand-pink:   #ec4899;
+  
+  --brand-primary:   #a855f7;
+  --brand-secondary: #ec4899;
+  --brand-dim:       rgba(168,85,247,.13);
+  --brand-glow:      rgba(168,85,247,.22);
 
-  --user-bg:    #2a1f05;
-  --user-bdr:   #5c3d0a;
-  --user-text:  #fde8a8;
+  --user-bg:    #1e132e;
+  --user-bdr:   #4c2d73;
+  --user-text:  #f3e8ff;
 
   --text:       #e8ecf4;
   --text2:      #8892a4;
@@ -56,7 +60,7 @@ body {
 body::before {
   content:'';position:fixed;top:-20%;left:-20%;
   width:60%;height:60%;
-  background:radial-gradient(ellipse, rgba(245,166,35,.04) 0%, transparent 70%);
+  background:radial-gradient(ellipse, rgba(168,85,247,.08) 0%, transparent 70%);
   pointer-events:none;z-index:0;
 }
 
@@ -74,17 +78,18 @@ body::before {
 }
 .brand-icon {
   width:42px;height:42px;border-radius:12px;
-  background:linear-gradient(135deg,#f5a623,#e08c10);
+  background:linear-gradient(135deg,var(--brand-blue),var(--brand-purple),var(--brand-pink));
   display:flex;align-items:center;justify-content:center;
-  font-size:20px;font-weight:800;color:#0b0d10;
+  font-size:20px;font-weight:800;color:#fff;
   letter-spacing:-1px;font-family:'Syne',sans-serif;
   flex-shrink:0;
 }
-.brand-text {}
 .brand-name {
   font-family:'Syne',sans-serif;font-size:16px;font-weight:800;
-  background:linear-gradient(90deg,var(--gold),#fbbf24);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background:linear-gradient(90deg,var(--brand-blue),var(--brand-pink));
+  -webkit-background-clip:text;
+  background-clip:text; /* Added standard property */
+  -webkit-text-fill-color:transparent;
 }
 .brand-sub {
   font-size:11px;color:var(--text2);display:flex;align-items:center;gap:5px;margin-top:1px;
@@ -103,7 +108,7 @@ body::before {
   display:flex;align-items:center;justify-content:center;font-size:15px;
   transition:all .18s;text-decoration:none;
 }
-.ico-btn:hover{background:var(--gold-dim);color:var(--gold);border-color:var(--gold);}
+.ico-btn:hover{background:var(--brand-dim);color:var(--brand-primary);border-color:var(--brand-primary);}
 
 /* ── USER CHIP ── */
 .user-chip {
@@ -113,12 +118,12 @@ body::before {
   border-radius:99px;cursor:pointer;
   transition:all .18s;
 }
-.user-chip:hover{border-color:var(--gold);background:var(--gold-dim);}
+.user-chip:hover{border-color:var(--brand-primary);background:var(--brand-dim);}
 .uc-av {
   width:28px;height:28px;border-radius:50%;
-  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  background:linear-gradient(135deg,var(--brand-blue),var(--brand-pink));
   display:flex;align-items:center;justify-content:center;
-  font-size:12px;font-weight:700;color:#0b0d10;
+  font-size:12px;font-weight:700;color:#fff;
   font-family:'Syne',sans-serif;
 }
 .uc-name{font-size:12px;font-weight:500;color:var(--text2);}
@@ -159,7 +164,7 @@ body::before {
   display:flex;align-items:center;justify-content:center;
   font-size:14px;flex-shrink:0;
 }
-.av.bot-av{background:var(--gold-dim);border:1.5px solid var(--gold);}
+.av.bot-av{background:var(--brand-dim);border:1.5px solid var(--brand-primary);}
 .av.usr-av{background:var(--user-bg);border:1.5px solid var(--user-bdr);}
 
 .msg-wrap{display:flex;flex-direction:column;max-width:80%;}
@@ -181,7 +186,7 @@ body::before {
   border-bottom-right-radius:5px;color:var(--user-text);
 }
 .bbl-time{font-size:10px;color:var(--text3);margin-top:3px;}
-.mr.user .bbl-time{text-align:right;color:#8a6020;}
+.mr.user .bbl-time{text-align:right;color:#b282d9;}
 
 /* typing */
 .typing-row{display:flex;gap:8px;align-items:center;}
@@ -216,11 +221,11 @@ body::before {
   font-size:13px;font-weight:500;cursor:pointer;
   white-space:nowrap;transition:all .16s;
 }
-.qb:hover{border-color:var(--gold);background:var(--gold-dim);color:var(--gold);}
+.qb:hover{border-color:var(--brand-primary);background:var(--brand-dim);color:var(--brand-primary);}
 .qb.primary{
-  background:var(--gold);color:#0b0d10;border-color:var(--gold);font-weight:700;
+  background:var(--brand-primary);color:#fff;border-color:var(--brand-primary);font-weight:700;
 }
-.qb.primary:hover{background:var(--gold2);border-color:var(--gold2);}
+.qb.primary:hover{background:var(--brand-pink);border-color:var(--brand-pink);}
 .qb.danger{border-color:var(--red);color:var(--red);}
 .qb.danger:hover{background:rgba(248,113,113,.1);}
 .qb.ghost{border-color:transparent;background:transparent;color:var(--text2);}
@@ -232,8 +237,8 @@ body::before {
 }
 .card-hd {
   padding:9px 13px;
-  background:var(--gold-dim);border-bottom:1px solid var(--border);
-  font-size:11px;font-weight:700;color:var(--gold);
+  background:var(--brand-dim);border-bottom:1px solid var(--border);
+  font-size:11px;font-weight:700;color:var(--brand-primary);
   text-transform:uppercase;letter-spacing:.7px;
 }
 .card-row {
@@ -244,7 +249,7 @@ body::before {
 .card-row:last-child{border-bottom:none;}
 .cl{color:var(--text2);}
 .cv{font-weight:500;color:var(--text);}
-.cv.gold{color:var(--gold);}
+.cv.brand{color:var(--brand-primary);}
 .cv.green{color:var(--green);}
 .cv.red{color:var(--red);}
 
@@ -260,7 +265,7 @@ body::before {
   cursor:pointer;text-align:center;
   font-family:'DM Mono',monospace;transition:all .14s;
 }
-.slot-btn:hover:not(.busy):not(.past){border-color:var(--gold);color:var(--gold);background:var(--gold-dim);}
+.slot-btn:hover:not(.busy):not(.past){border-color:var(--brand-primary);color:var(--brand-primary);background:var(--brand-dim);}
 .slot-btn.busy{color:var(--text3);cursor:default;opacity:.5;}
 .slot-btn.past{color:var(--text3);cursor:default;opacity:.35;}
 .slot-btn.full{color:var(--red);opacity:.6;cursor:default;}
@@ -274,7 +279,7 @@ body::before {
   text-align:left;display:flex;align-items:flex-start;gap:7px;
   transition:all .14s;
 }
-.loc-btn:hover{border-color:var(--gold);background:var(--gold-dim);}
+.loc-btn:hover{border-color:var(--brand-primary);background:var(--brand-dim);}
 .li{font-size:16px;flex-shrink:0;margin-top:-1px;}
 .ln{line-height:1.35;}
 
@@ -284,11 +289,11 @@ body::before {
 .rs-left{display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:18px;}
 .rd{
   width:12px;height:12px;border-radius:50%;
-  border:2px solid var(--gold);background:var(--bg);flex-shrink:0;
+  border:2px solid var(--brand-primary);background:var(--bg);flex-shrink:0;
 }
-.rd.filled{background:var(--gold);}
+.rd.filled{background:var(--brand-primary);}
 .rd.dest{border-color:var(--red);background:var(--red);}
-.rl{width:2px;flex:1;min-height:18px;background:linear-gradient(to bottom,var(--gold),rgba(245,166,35,.2));margin:0 auto;}
+.rl{width:2px;flex:1;min-height:18px;background:linear-gradient(to bottom,var(--brand-primary),rgba(168,85,247,.2));margin:0 auto;}
 .ri{padding-bottom:13px;flex:1;}
 .rn{font-size:13px;font-weight:600;color:var(--text);}
 .rs2{font-size:11px;color:var(--text3);margin-top:2px;}
@@ -299,14 +304,14 @@ body::before {
   border-radius:var(--rsm);padding:10px 13px;
   margin-top:8px;font-size:13px;font-weight:500;
 }
-.banner.gold{background:var(--gold-dim);border:1px solid rgba(245,166,35,.3);color:var(--gold);}
+.banner.brand{background:var(--brand-dim);border:1px solid rgba(168,85,247,.3);color:var(--brand-primary);}
 .banner.green{background:var(--green-dim);border:1px solid rgba(52,211,153,.3);color:var(--green);}
 .banner.blue{background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.3);color:var(--blue);}
 .banner.red{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:var(--red);}
 
 /* progress */
 .prog-wrap{background:var(--border);border-radius:99px;height:5px;margin-top:6px;overflow:hidden;}
-.prog-bar{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--gold2),var(--gold));transition:width .5s ease;}
+.prog-bar{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--brand-blue),var(--brand-pink));transition:width .5s ease;}
 
 /* login screen overlay */
 .login-overlay{
@@ -325,12 +330,18 @@ body::before {
 }
 .login-logo-icon{
   width:52px;height:52px;border-radius:14px;
-  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  background:linear-gradient(135deg,var(--brand-blue),var(--brand-purple),var(--brand-pink));
   display:flex;align-items:center;justify-content:center;
-  font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#0b0d10;
+  font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#fff;
 }
-.login-logo-text{}
-.login-app-name{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--gold);}
+
+.login-app-name{
+  font-family:'Syne',sans-serif;font-size:20px;font-weight:800;
+  background:linear-gradient(90deg,var(--brand-blue),var(--brand-pink));
+  -webkit-background-clip:text;
+  background-clip:text; /* Added standard property */
+  -webkit-text-fill-color:transparent;
+}
 .login-app-sub{font-size:12px;color:var(--text2);}
 .login-tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--surface2);border-radius:10px;padding:3px;}
 .ltab{
@@ -338,7 +349,7 @@ body::before {
   cursor:pointer;text-align:center;border:none;background:transparent;
   color:var(--text2);transition:all .18s;font-family:'DM Sans',sans-serif;
 }
-.ltab.active{background:var(--gold);color:#0b0d10;}
+.ltab.active{background:var(--brand-primary);color:#fff;}
 .login-field{margin-bottom:14px;}
 .login-label{font-size:12px;color:var(--text2);margin-bottom:6px;display:block;font-weight:500;}
 .login-input{
@@ -347,27 +358,26 @@ body::before {
   color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;
   transition:border-color .18s;outline:none;
 }
-.login-input:focus{border-color:var(--gold);}
+.login-input:focus{border-color:var(--brand-primary);}
 .login-btn{
   width:100%;padding:12px;border-radius:10px;
-  background:var(--gold);color:#0b0d10;
+  background:var(--brand-primary);color:#fff;
   font-family:'Syne',sans-serif;font-size:15px;font-weight:700;
   border:none;cursor:pointer;margin-top:6px;
   transition:background .18s;
 }
-.login-btn:hover{background:var(--gold2);}
+.login-btn:hover{background:var(--brand-pink);}
 .login-err{font-size:12px;color:var(--red);margin-top:8px;text-align:center;}
 </style>
 </head>
 <body>
 
-<!-- LOGIN OVERLAY -->
 <div class="login-overlay" id="loginOverlay">
   <div class="login-card">
     <div class="login-logo">
       <div class="login-logo-icon">OR</div>
       <div class="login-logo-text">
-        <div class="login-app-name">Ostello Rides</div>
+        <div class="login-app-name">OstelloRides</div>
         <div class="login-app-sub">CBD Belapur, Navi Mumbai</div>
       </div>
     </div>
@@ -377,7 +387,6 @@ body::before {
       <button class="ltab" id="tabReg" onclick="switchTab('register')">Register</button>
     </div>
 
-    <!-- LOGIN FORM -->
     <div id="loginForm">
       <div class="login-field">
         <label class="login-label">Phone Number</label>
@@ -391,7 +400,6 @@ body::before {
       <div class="login-err" id="loginErr"></div>
     </div>
 
-    <!-- REGISTER FORM -->
     <div id="registerForm" style="display:none">
       <div class="login-field">
         <label class="login-label">Full Name</label>
@@ -415,12 +423,11 @@ body::before {
   </div>
 </div>
 
-<!-- TOP BAR -->
 <div class="topbar">
   <div class="brand">
     <div class="brand-icon">OR</div>
     <div class="brand-text">
-      <div class="brand-name">Ostello Rides</div>
+      <div class="brand-name">OstelloRides</div>
       <div class="brand-sub"><span class="live-dot"></span>Belapur • Navi Mumbai</div>
     </div>
   </div>
@@ -434,12 +441,10 @@ body::before {
   </div>
 </div>
 
-<!-- CHAT -->
 <div class="chat-wrap">
   <div class="chat-area" id="chatArea"></div>
 </div>
 
-<!-- QUICK REPLIES -->
 <div class="reply-area" id="replyArea">
   <div class="reply-hint" id="replyHint">Choose an option</div>
   <div class="reply-scroll">
@@ -493,12 +498,12 @@ async function doRegister() {
   afterLogin();
 }
 
-function afterLogin() {
+async function afterLogin() {
   document.getElementById('loginOverlay').style.display = 'none';
   const initials = S.user.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
   document.getElementById('ucAv').textContent   = initials;
   document.getElementById('ucName').textContent = S.user.name.split(' ')[0];
-  loadLocations();
+  await loadLocations();
   startFlow();
 }
 
@@ -510,14 +515,14 @@ async function checkSession() {
     const initials = S.user.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     document.getElementById('ucAv').textContent   = initials;
     document.getElementById('ucName').textContent = S.user.name.split(' ')[0];
-    loadLocations();
+    await loadLocations();
     startFlow();
   }
 }
 
 async function loadLocations() {
   const locs = await api('/locations');
-  S.locations = locs;
+  S.locations = Array.isArray(locs) ? locs : [];
 }
 
 // ─── TIME HELPERS ─────────────────────────────────────────────────────────────
@@ -599,7 +604,7 @@ async function getRoute(stops) {
 // ─── MAIN FLOW ────────────────────────────────────────────────────────────────
 
 async function startFlow() {
-  await botSay(`👋 Hey <strong>${S.user.name.split(' ')[0]}</strong>! Welcome to <strong>Ostello Rides</strong>.<br>
+  await botSay(`👋 Hey <strong>${S.user.name.split(' ')[0]}</strong>! Welcome to <strong>OstelloWork</strong>.<br>
     <span style="color:var(--text2);font-size:13px">Smart shared cabs from Parsik Hill, Belapur 🏠</span>`, 600);
 
   await botSay(`What would you like to do?`, 800);
@@ -621,18 +626,27 @@ async function startBooking(type) {
       : `Sure! <strong>Where should we pick you up from?</strong><br><span style="color:var(--text2);font-size:12px">Select location or use your GPS</span>`
   );
 
-  showLocationPicker(type);
+  await showLocationPicker(type);
 }
 
-function showLocationPicker(type) {
+async function showLocationPicker(type) {
   replyEl.innerHTML = '';
   hintEl.textContent = 'Select location';
   replyArea.style.display = '';
+
+  if (!S.locations.length) {
+    await loadLocations();
+  }
 
   const locs = S.locations.filter(l => {
     if (type==='drop') return !l.label.includes('Ostello');
     return true;
   });
+
+  if (!locs.length) {
+    setReplies([{ label:'↻ Reload Locations', fn:()=>showLocationPicker(type) }], 'Location data missing');
+    return;
+  }
 
   const grid = document.createElement('div');
   grid.className = 'loc-grid';
@@ -732,7 +746,7 @@ async function selectTime(slot) {
 
   let clusterNote = '';
   if (adjusted) {
-    clusterNote = `<div class="banner gold">⚡ Smart grouping: adjusted to <strong>${res.scheduled_time}</strong> (shared with ${pax-1} other${pax>2?'s':''})</div>`;
+    clusterNote = `<div class="banner brand">⚡ Smart grouping: adjusted to <strong>${res.scheduled_time}</strong> (shared with ${pax-1} other${pax>2?'s':''})</div>`;
   }
 
   await botSay(
@@ -747,7 +761,7 @@ async function selectTime(slot) {
 }
 
 async function showRoute(res) {
-  const ostello = { lat:19.0176, lon:73.0360, label:'Ostello, Parsik Hill' };
+  const ostello = { lat:19.0176, lon:73.0360, label:'OstelloWork, Parsik Hill' };
   const dest    = S.booking.location;
   const stops   = S.booking.type==='drop'
     ? [ostello, { lat:dest.lat, lon:dest.lon||dest.lng, label:dest.label }]
@@ -780,7 +794,7 @@ async function showRoute(res) {
     </div>
     <div class="card">
       <div class="card-hd">📋 Booking Summary</div>
-      <div class="card-row"><span class="cl">Booking ID</span><span class="cv gold">#${res.booking_id}</span></div>
+      <div class="card-row"><span class="cl">Booking ID</span><span class="cv brand">#${res.booking_id}</span></div>
       <div class="card-row"><span class="cl">Type</span><span class="cv">${S.booking.type==='drop'?'🚐 Drop':'📍 Pickup'}</span></div>
       <div class="card-row"><span class="cl">Scheduled</span><span class="cv green">${res.scheduled_time}</span></div>
       <div class="card-row"><span class="cl">Passengers</span><span class="cv">${res.pax_in_group}/10</span></div>

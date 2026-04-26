@@ -3,12 +3,14 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Ostello Rides — Driver View</title>
+<title>OstelloRides — Driver View</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
 :root{
   --bg:#0b0d10;--surface:#13161c;--surface2:#1a1e27;--border:#252b38;--border2:#2e3648;
-  --gold:#f5a623;--gold2:#e08c10;--gold-dim:rgba(245,166,35,.12);
+  --brand-blue:#60a5fa;--brand-purple:#a855f7;--brand-pink:#ec4899;
+  --brand-primary:#a855f7;--brand-secondary:#ec4899;
+  --brand-dim:rgba(168,85,247,.12);
   --text:#e8ecf4;--text2:#8892a4;--text3:#454f63;
   --green:#34d399;--red:#f87171;--blue:#60a5fa;
 }
@@ -16,20 +18,23 @@
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
 
 .nav{display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--border);}
-.nav-icon{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,var(--gold),var(--gold2));display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:#0b0d10;}
-.nav-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--gold);}
+.nav-icon{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,var(--brand-blue),var(--brand-purple),var(--brand-pink));display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:#fff;}
+/* Line 22 */
+.nav-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;background:linear-gradient(90deg,var(--brand-blue),var(--brand-pink));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+
+/* Line 47: Simply delete the entire .stop-info{} line */
 .nav-sub{font-size:11px;color:var(--text2);}
 
 .content{padding:20px;}
 .heading{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:16px;}
-.heading span{color:var(--gold);}
+.heading span{color:var(--brand-primary);}
 
 .trip-card{background:var(--surface);border:1px solid var(--border2);border-radius:14px;overflow:hidden;margin-bottom:16px;}
 .trip-hd{
   display:flex;align-items:center;justify-content:space-between;
-  padding:12px 16px;background:var(--gold-dim);border-bottom:1px solid var(--border);
+  padding:12px 16px;background:var(--brand-dim);border-bottom:1px solid var(--border);
 }
-.trip-time{font-family:'DM Mono',monospace;font-size:18px;font-weight:500;color:var(--gold);}
+.trip-time{font-family:'DM Mono',monospace;font-size:18px;font-weight:500;color:var(--brand-primary);}
 .trip-type{font-size:12px;color:var(--text2);margin-top:2px;}
 .trip-badge{font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(52,211,153,.1);color:var(--green);font-weight:600;}
 
@@ -37,19 +42,19 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .stop{display:flex;align-items:flex-start;gap:10px;margin-bottom:14px;}
 .stop:last-child{margin-bottom:0;}
 .stop-dot{
-  width:12px;height:12px;border-radius:50%;border:2px solid var(--gold);background:var(--bg);
+  width:12px;height:12px;border-radius:50%;border:2px solid var(--brand-primary);background:var(--bg);
   flex-shrink:0;margin-top:3px;
 }
-.stop-dot.start{background:var(--gold);}
+.stop-dot.start{background:var(--brand-primary);border-color:var(--brand-primary);}
 .stop-dot.end{border-color:var(--red);background:var(--red);}
-.stop-info{}
+
 .stop-name{font-size:14px;font-weight:600;}
 .stop-pax{font-size:12px;color:var(--text2);margin-top:3px;}
 .stop-room{font-size:11px;color:var(--text3);}
 
 .stat-row{display:flex;gap:10px;padding:12px 16px;background:var(--surface2);border-top:1px solid var(--border);}
 .stat{flex:1;text-align:center;}
-.sv{font-size:18px;font-weight:700;color:var(--gold);font-family:'Syne',sans-serif;}
+.sv{font-size:18px;font-weight:700;color:var(--brand-primary);font-family:'Syne',sans-serif;}
 .sl{font-size:11px;color:var(--text2);}
 
 .empty{padding:48px 20px;text-align:center;color:var(--text3);font-size:14px;}
@@ -57,7 +62,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 </head>
 <body>
 <nav class="nav">
-  <div class="nav-icon">DR</div>
+  <div class="nav-icon">OR</div>
   <div>
     <div class="nav-title">Driver View</div>
     <div class="nav-sub">Today's Schedule</div>

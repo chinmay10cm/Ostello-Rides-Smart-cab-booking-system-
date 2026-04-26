@@ -74,6 +74,13 @@ CREATE TABLE IF NOT EXISTS system_locations (
     active  INTEGER NOT NULL DEFAULT 1
 );
 
+-- ── SYSTEM STATUS (simple key/value health info) ─────────────
+CREATE TABLE IF NOT EXISTS system_status (
+    key         TEXT PRIMARY KEY,
+    value       TEXT NOT NULL,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- ── SEED: DEFAULT DATA ────────────────────────────────────
 
 INSERT OR IGNORE INTO system_locations (label, icon, lat, lon) VALUES
@@ -101,3 +108,7 @@ INSERT OR IGNORE INTO vehicles (driver_name, plate, capacity) VALUES
 INSERT OR IGNORE INTO users (name, phone, room_number, role, pin_hash) VALUES
   ('Admin',  '9999999999', NULL, 'admin',  '$2b$12$dummy_admin_hash'),
   ('Driver1','9888888881', NULL, 'driver', '$2b$12$dummy_driver_hash');
+
+INSERT OR IGNORE INTO system_status (key, value) VALUES
+  ('backend_status', 'ok'),
+  ('db_status', 'ready');

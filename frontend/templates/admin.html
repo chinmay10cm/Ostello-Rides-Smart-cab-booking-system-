@@ -3,12 +3,14 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Ostello Rides — Admin</title>
+<title>OstelloRides — Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
 :root{
   --bg:#0b0d10;--surface:#13161c;--surface2:#1a1e27;--border:#252b38;--border2:#2e3648;
-  --gold:#f5a623;--gold2:#e08c10;--gold-dim:rgba(245,166,35,.12);
+  --brand-blue:#60a5fa;--brand-purple:#a855f7;--brand-pink:#ec4899;
+  --brand-primary:#a855f7;--brand-secondary:#ec4899;
+  --brand-dim:rgba(168,85,247,.12);
   --text:#e8ecf4;--text2:#8892a4;--text3:#454f63;
   --green:#34d399;--red:#f87171;--blue:#60a5fa;--purple:#a78bfa;
   --rs:10px;
@@ -25,11 +27,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .nav-brand{display:flex;align-items:center;gap:10px;}
 .nav-icon{
   width:38px;height:38px;border-radius:10px;
-  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  background:linear-gradient(135deg,var(--brand-blue),var(--brand-purple),var(--brand-pink));
   display:flex;align-items:center;justify-content:center;
-  font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:#0b0d10;
+  font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:#fff;
 }
-.nav-title{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--gold);}
+.nav-title{
+  font-family:'Syne',sans-serif;font-size:17px;font-weight:800;
+  background:linear-gradient(90deg,var(--brand-blue),var(--brand-pink));
+  -webkit-background-clip:text;
+  background-clip:text; /* Added standard property */
+  -webkit-text-fill-color:transparent;
+}
 .nav-sub{font-size:12px;color:var(--text2);}
 .nav-actions{display:flex;gap:8px;}
 .nav-btn{
@@ -37,8 +45,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   background:var(--surface2);color:var(--text2);font-size:13px;
   cursor:pointer;transition:all .16s;font-family:'DM Sans',sans-serif;
 }
-.nav-btn:hover{border-color:var(--gold);color:var(--gold);}
-.nav-btn.primary{background:var(--gold);color:#0b0d10;border-color:var(--gold);font-weight:600;}
+.nav-btn:hover{border-color:var(--brand-primary);color:var(--brand-primary);}
+.nav-btn.primary{background:var(--brand-primary);color:#fff;border-color:var(--brand-primary);font-weight:600;}
 
 /* STATS */
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:20px 24px 0;}
@@ -48,7 +56,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 }
 .stat-label{font-size:12px;color:var(--text2);font-weight:500;text-transform:uppercase;letter-spacing:.5px;}
 .stat-val{font-size:28px;font-weight:700;font-family:'Syne',sans-serif;margin-top:4px;color:var(--text);}
-.stat-val.gold{color:var(--gold);}
+.stat-val.brand{color:var(--brand-primary);}
 .stat-val.green{color:var(--green);}
 .stat-val.red{color:var(--red);}
 .stat-val.blue{color:var(--blue);}
@@ -69,7 +77,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   background:transparent;color:var(--text2);font-size:12px;cursor:pointer;
   transition:all .15s;font-family:'DM Sans',sans-serif;
 }
-.refresh-btn:hover{border-color:var(--gold);color:var(--gold);}
+.refresh-btn:hover{border-color:var(--brand-primary);color:var(--brand-primary);}
 
 .group-card{
   background:var(--surface);border:1px solid var(--border2);
@@ -77,7 +85,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 }
 .group-header{
   display:flex;align-items:center;justify-content:space-between;
-  padding:12px 16px;background:var(--gold-dim);border-bottom:1px solid var(--border);
+  padding:12px 16px;background:var(--brand-dim);border-bottom:1px solid var(--border);
 }
 .group-label{
   display:flex;align-items:center;gap:8px;
@@ -88,14 +96,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 }
 .group-type.drop{background:rgba(96,165,250,.15);color:var(--blue);}
 .group-type.pickup{background:rgba(167,139,250,.15);color:var(--purple);}
-.group-time{font-family:'DM Mono',monospace;font-size:14px;font-weight:500;color:var(--gold);}
+.group-time{font-family:'DM Mono',monospace;font-size:14px;font-weight:500;color:var(--brand-primary);}
 .group-pax{font-size:12px;color:var(--text2);}
 .group-status{
   font-size:11px;padding:3px 10px;border-radius:99px;font-weight:600;text-transform:uppercase;
 }
 .gs-open{background:rgba(52,211,153,.1);color:var(--green);}
 .gs-assigned{background:rgba(96,165,250,.1);color:var(--blue);}
-.gs-in_progress{background:rgba(245,166,35,.1);color:var(--gold);}
+.gs-in_progress{background:rgba(168,85,247,.1);color:var(--brand-primary);}
 .gs-completed{background:rgba(255,255,255,.05);color:var(--text3);}
 
 .pax-table{width:100%;border-collapse:collapse;}
@@ -115,7 +123,7 @@ tr:hover .pax-td{background:rgba(255,255,255,.02);}
 .route-chip{
   display:inline-flex;align-items:center;gap:5px;
   padding:3px 9px;border-radius:99px;font-size:11px;
-  background:var(--gold-dim);color:var(--gold);border:1px solid rgba(245,166,35,.2);
+  background:var(--brand-dim);color:var(--brand-primary);border:1px solid rgba(168,85,247,.2);
 }
 
 /* group actions */
@@ -129,9 +137,9 @@ tr:hover .pax-td{background:rgba(255,255,255,.02);}
   color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;
   transition:all .15s;
 }
-.act-btn:hover{border-color:var(--gold);color:var(--gold);}
-.act-btn.assign{background:var(--gold);color:#0b0d10;border-color:var(--gold);}
-.act-btn.assign:hover{background:var(--gold2);}
+.act-btn:hover{border-color:var(--brand-primary);color:var(--brand-primary);}
+.act-btn.assign{background:var(--brand-primary);color:#fff;border-color:var(--brand-primary);}
+.act-btn.assign:hover{background:var(--brand-secondary);}
 
 /* VEHICLES SIDEBAR */
 .vehicles-panel{width:280px;flex-shrink:0;}
@@ -164,21 +172,21 @@ tr:hover .pax-td{background:rgba(255,255,255,.02);}
   color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;
   outline:none;margin-bottom:12px;transition:border-color .18s;
 }
-.modal-input:focus{border-color:var(--gold);}
+.modal-input:focus{border-color:var(--brand-primary);}
 .modal-actions{display:flex;gap:8px;margin-top:4px;}
 .modal-btn{
   flex:1;padding:10px;border-radius:8px;font-size:13px;font-weight:600;
   border:1px solid var(--border2);background:var(--surface2);
   color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;
 }
-.modal-btn.confirm{background:var(--gold);color:#0b0d10;border-color:var(--gold);}
+.modal-btn.confirm{background:var(--brand-primary);color:#fff;border-color:var(--brand-primary);}
 
 select.modal-input{cursor:pointer;}
 
 .toast{
   position:fixed;bottom:24px;right:24px;z-index:100;
-  background:var(--surface);border:1px solid var(--gold);border-radius:10px;
-  padding:12px 18px;font-size:13px;font-weight:500;color:var(--gold);
+  background:var(--surface);border:1px solid var(--brand-primary);border-radius:10px;
+  padding:12px 18px;font-size:13px;font-weight:500;color:var(--brand-primary);
   animation:toastIn .25s ease;
 }
 @keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
@@ -188,32 +196,29 @@ select.modal-input{cursor:pointer;}
 </head>
 <body>
 
-<!-- NAV -->
 <nav class="nav">
   <div class="nav-brand">
-    <div class="nav-icon">OR</div>
+    <div class="nav-icon">OW</div>
     <div>
-      <div class="nav-title">Ostello Rides — Admin</div>
+      <div class="nav-title">OstelloRides — Admin</div>
       <div class="nav-sub">CBD Belapur, Navi Mumbai</div>
     </div>
   </div>
   <div class="nav-actions">
     <a href="/" class="nav-btn">← App</a>
+    <button class="nav-btn" onclick="openDriverModal()">+ Add Driver</button>
     <button class="nav-btn primary" onclick="refresh()">↻ Refresh</button>
   </div>
 </nav>
 
-<!-- STATS -->
 <div class="stats" id="statsRow">
-  <div class="stat-card"><div class="stat-label">Total Bookings</div><div class="stat-val gold" id="sTot">—</div></div>
+  <div class="stat-card"><div class="stat-label">Total Bookings</div><div class="stat-val brand" id="sTot">—</div></div>
   <div class="stat-card"><div class="stat-label">Pending Groups</div><div class="stat-val blue" id="sPend">—</div></div>
   <div class="stat-card"><div class="stat-label">Passengers Today</div><div class="stat-val green" id="sPax">—</div></div>
   <div class="stat-card"><div class="stat-label">Cancelled</div><div class="stat-val red" id="sCanc">—</div></div>
 </div>
 
-<!-- MAIN -->
 <div class="main">
-  <!-- GROUPS -->
   <div class="groups-panel">
     <div class="section-hd">
       <div class="section-title">Today's Ride Groups</div>
@@ -222,7 +227,6 @@ select.modal-input{cursor:pointer;}
     <div id="groupsList"><div class="empty">Loading…</div></div>
   </div>
 
-  <!-- VEHICLES SIDEBAR -->
   <div class="vehicles-panel">
     <div class="section-hd" style="margin-bottom:12px">
       <div class="section-title">Vehicles</div>
@@ -231,7 +235,6 @@ select.modal-input{cursor:pointer;}
   </div>
 </div>
 
-<!-- ASSIGN MODAL -->
 <div class="modal-bg" id="assignModal" style="display:none">
   <div class="modal">
     <div class="modal-title">🚗 Assign Vehicle</div>
@@ -244,7 +247,6 @@ select.modal-input{cursor:pointer;}
   </div>
 </div>
 
-<!-- RESCHEDULE MODAL -->
 <div class="modal-bg" id="reschedModal" style="display:none">
   <div class="modal">
     <div class="modal-title">⏱ Reschedule Group</div>
@@ -253,6 +255,21 @@ select.modal-input{cursor:pointer;}
     <div class="modal-actions">
       <button class="modal-btn" onclick="closeModal()">Cancel</button>
       <button class="modal-btn confirm" onclick="confirmReschedule()">Update</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="driverModal" style="display:none">
+  <div class="modal">
+    <div class="modal-title">👤 Add Driver + Vehicle</div>
+    <input class="modal-input" id="dName" type="text" placeholder="Driver full name"/>
+    <input class="modal-input" id="dPhone" type="tel" placeholder="Phone (10 digits)" maxlength="10"/>
+    <input class="modal-input" id="dPin" type="password" placeholder="4-digit login PIN" maxlength="4"/>
+    <input class="modal-input" id="dPlate" type="text" placeholder="Vehicle plate (e.g. MH-43-AB-1234)"/>
+    <input class="modal-input" id="dCapacity" type="number" placeholder="Capacity" min="1" value="10"/>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn confirm" onclick="confirmAddDriver()">Create</button>
     </div>
   </div>
 </div>
@@ -279,6 +296,7 @@ function toast(msg) {
 function closeModal() {
   document.getElementById('assignModal').style.display   = 'none';
   document.getElementById('reschedModal').style.display  = 'none';
+  document.getElementById('driverModal').style.display   = 'none';
   activeGroupId = null; activeModal = null;
 }
 
@@ -400,6 +418,29 @@ async function confirmReschedule() {
   const res = await api(`/admin/groups/${activeGroupId}/reschedule`, 'POST', { new_time: t });
   closeModal();
   toast(res.message || 'Rescheduled!');
+  refresh();
+}
+
+function openDriverModal() {
+  activeModal = 'driver';
+  document.getElementById('driverModal').style.display = 'flex';
+}
+
+async function confirmAddDriver() {
+  const name = document.getElementById('dName').value.trim();
+  const phone = document.getElementById('dPhone').value.trim();
+  const pin = document.getElementById('dPin').value.trim();
+  const plate = document.getElementById('dPlate').value.trim();
+  const capacity = parseInt(document.getElementById('dCapacity').value || '10', 10);
+
+  const res = await api('/admin/drivers', 'POST', { name, phone, pin, plate, capacity });
+  if (res.error) {
+    toast(res.error);
+    return;
+  }
+
+  closeModal();
+  toast(res.message || 'Driver created');
   refresh();
 }
 

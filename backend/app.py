@@ -34,8 +34,44 @@ def init_db():
     schema = os.path.join(os.path.dirname(__file__), '..', 'database', 'schema.sql')
     with app.app_context():
         db = get_db()
-        with open(schema) as f:
+        with open(schema, encoding='utf-8') as f:
             db.executescript(f.read())
+        db.commit()
+
+def ensure_db_ready():
+    """
+    Initialize schema when DB file is missing or exists without core tables.
+    This avoids "no such table: users" when a previous init partially failed.
+    """
+    with app.app_context():
+        db = get_db()
+        required_tables = (
+            'users', 'vehicles', 'bookings', 'ride_groups',
+            'saved_locations', 'system_locations', 'system_status'
+        )
+        placeholders = ','.join('?' for _ in required_tables)
+        existing_rows = db.execute(
+            f"SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ({placeholders})",
+            required_tables
+        ).fetchall()
+        existing = {r['name'] for r in existing_rows}
+        if len(existing) != len(required_tables):
+            init_db()
+
+def normalize_seed_user_hashes():
+    """
+    Backfill old dummy seeded hashes to the current SHA256 pin scheme.
+    Keeps login consistent for default bootstrap users.
+    """
+    with app.app_context():
+        db = get_db()
+        admin = db.execute("SELECT id, pin_hash FROM users WHERE phone = ?", ('9999999999',)).fetchone()
+        if admin and admin['pin_hash'] and admin['pin_hash'].startswith('$2b$12$dummy'):
+            db.execute("UPDATE users SET pin_hash = ? WHERE id = ?", (pin_hash('0000'), admin['id']))
+
+        driver = db.execute("SELECT id, pin_hash FROM users WHERE phone = ?", ('9888888881',)).fetchone()
+        if driver and driver['pin_hash'] and driver['pin_hash'].startswith('$2b$12$dummy'):
+            db.execute("UPDATE users SET pin_hash = ? WHERE id = ?", (pin_hash('1111'), driver['id']))
         db.commit()
 
 def query(sql, args=(), one=False):
@@ -342,6 +378,25 @@ def get_route():
         return jsonify({'error': 'Route not available'}), 502
     return jsonify(result)
 
+@app.route('/api/health/db', methods=['GET'])
+def db_health():
+    """Basic DB health/status including core table presence."""
+    required_tables = [
+        'users', 'vehicles', 'bookings', 'ride_groups',
+        'saved_locations', 'system_locations', 'system_status'
+    ]
+    table_rows = query("SELECT name FROM sqlite_master WHERE type = 'table'")
+    existing_tables = {r['name'] for r in table_rows}
+    missing = [t for t in required_tables if t not in existing_tables]
+    status_rows = query("SELECT key, value, updated_at FROM system_status ORDER BY key")
+
+    return jsonify({
+        'db_path': DB_PATH,
+        'db_ok': len(missing) == 0,
+        'missing_tables': missing,
+        'status': [dict(r) for r in status_rows],
+    }), (200 if len(missing) == 0 else 500)
+
 # ─── ADMIN ROUTES ─────────────────────────────────────────────────────────────
 
 @app.route('/api/admin/groups', methods=['GET'])
@@ -404,6 +459,47 @@ def list_vehicles():
     rows = query("SELECT * FROM vehicles WHERE active = 1")
     return jsonify([dict(r) for r in rows])
 
+@app.route('/api/admin/drivers', methods=['POST'])
+@login_required
+@admin_required
+def add_driver():
+    d = request.json or {}
+    name = d.get('name', '').strip()
+    phone = d.get('phone', '').strip()
+    pin = d.get('pin', '').strip()
+    plate = d.get('plate', '').strip().upper()
+    capacity = int(d.get('capacity', 10) or 10)
+
+    if not all([name, phone, plate]) or len(pin) != 4:
+        return jsonify({'error': 'name, phone, 4-digit pin, and plate are required'}), 400
+    if capacity < 1:
+        return jsonify({'error': 'capacity must be at least 1'}), 400
+
+    if query("SELECT id FROM users WHERE phone = ?", (phone,), one=True):
+        return jsonify({'error': 'Phone already exists'}), 409
+    if query("SELECT id FROM vehicles WHERE plate = ?", (plate,), one=True):
+        return jsonify({'error': 'Vehicle plate already exists'}), 409
+
+    db = get_db()
+    try:
+        uid = db.execute(
+            "INSERT INTO users (name, phone, role, pin_hash) VALUES (?, ?, 'driver', ?)",
+            (name, phone, pin_hash(pin))
+        ).lastrowid
+        vid = db.execute(
+            "INSERT INTO vehicles (driver_name, plate, capacity, active) VALUES (?, ?, ?, 1)",
+            (name, plate, capacity)
+        ).lastrowid
+        db.commit()
+        return jsonify({
+            'message': 'Driver created successfully',
+            'driver_user_id': uid,
+            'vehicle_id': vid,
+        }), 201
+    except sqlite3.IntegrityError:
+        db.rollback()
+        return jsonify({'error': 'Failed to create driver due to duplicate data'}), 409
+
 # ─── DRIVER ROUTES ────────────────────────────────────────────────────────────
 
 @app.route('/api/driver/my-group')
@@ -453,7 +549,7 @@ def driver_page():
 # ─── INIT ─────────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
-    if not os.path.exists(DB_PATH):
-        init_db()
-        print('✅ Database initialised')
+    ensure_db_ready()
+    normalize_seed_user_hashes()
+    print('✅ Database ready')
     app.run(debug=True, port=5001)
