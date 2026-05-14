@@ -1,9 +1,9 @@
 """
-OSTELLO RIDES — Flask Backend
+OSTELLO RIDES — Flask Backend  v2
 CBD Belapur, Navi Mumbai
 """
 
-from flask import Flask, render_template, request, jsonify, session, g
+from flask import Flask, render_template, request, jsonify, session, g, redirect, url_for
 import sqlite3, json, requests, hashlib, os
 from datetime import datetime, date
 from functools import wraps
@@ -12,9 +12,9 @@ app = Flask(__name__, template_folder='../frontend/templates',
             static_folder='../frontend/static')
 app.secret_key = os.environ.get('SECRET_KEY', 'ostello-rides-dev-secret-change-in-prod')
 
-DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'database', 'ostello.db')
-OSRM_BASE = 'https://router.project-osrm.org/route/v1/foot'
-OSTELLO_LAT, OSTELLO_LON = 19.0176, 73.0360   # 171 Parsik Hill, CBD Belapur
+DB_PATH   = os.path.join(os.path.dirname(__file__), '..', 'database', 'ostello.db')
+OSRM_BASE = os.environ.get('OSRM_BASE', 'https://router.project-osrm.org/route/v1/driving')
+OSTELLO_LAT, OSTELLO_LON = 19.0176, 73.0360   # Parsik Hill, CBD Belapur
 
 # ─── DB HELPERS ──────────────────────────────────────────────────────────────
 
@@ -39,19 +39,16 @@ def init_db():
         db.commit()
 
 def ensure_db_ready():
-    """
-    Initialize schema when DB file is missing or exists without core tables.
-    This avoids "no such table: users" when a previous init partially failed.
-    """
+    """Initialize schema when DB file is missing or core tables absent."""
     with app.app_context():
         db = get_db()
         required_tables = (
             'users', 'vehicles', 'bookings', 'ride_groups',
-            'saved_locations', 'system_locations', 'system_status'
+            'saved_locations', 'system_locations', 'system_status', 'driver_locations'
         )
         placeholders = ','.join('?' for _ in required_tables)
         existing_rows = db.execute(
-            f"SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ({placeholders})",
+            f"SELECT name FROM sqlite_master WHERE type='table' AND name IN ({placeholders})",
             required_tables
         ).fetchall()
         existing = {r['name'] for r in existing_rows}
@@ -59,28 +56,23 @@ def ensure_db_ready():
             init_db()
 
 def normalize_seed_user_hashes():
-    """
-    Backfill old dummy seeded hashes to the current SHA256 pin scheme.
-    Keeps login consistent for default bootstrap users.
-    """
+    """Backfill old dummy bcrypt seeds to the current SHA-256 scheme."""
     with app.app_context():
         db = get_db()
-        admin = db.execute("SELECT id, pin_hash FROM users WHERE phone = ?", ('9999999999',)).fetchone()
-        if admin and admin['pin_hash'] and admin['pin_hash'].startswith('$2b$12$dummy'):
-            db.execute("UPDATE users SET pin_hash = ? WHERE id = ?", (pin_hash('0000'), admin['id']))
-
-        driver = db.execute("SELECT id, pin_hash FROM users WHERE phone = ?", ('9888888881',)).fetchone()
-        if driver and driver['pin_hash'] and driver['pin_hash'].startswith('$2b$12$dummy'):
-            db.execute("UPDATE users SET pin_hash = ? WHERE id = ?", (pin_hash('1111'), driver['id']))
+        for phone, fallback_pin in [('9999999999', '0000'), ('9888888881', '1111')]:
+            row = db.execute("SELECT id, pin_hash FROM users WHERE phone = ?", (phone,)).fetchone()
+            if row and row['pin_hash'] and row['pin_hash'].startswith('$2b$'):
+                db.execute("UPDATE users SET pin_hash = ? WHERE id = ?",
+                           (pin_hash(fallback_pin), row['id']))
         db.commit()
 
 def query(sql, args=(), one=False):
     cur = get_db().execute(sql, args)
-    rv = cur.fetchall()
+    rv  = cur.fetchall()
     return (rv[0] if rv else None) if one else rv
 
 def mutate(sql, args=()):
-    db = get_db()
+    db  = get_db()
     cur = db.execute(sql, args)
     db.commit()
     return cur.lastrowid
@@ -101,8 +93,16 @@ def login_required(f):
 def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        if session.get('role') not in ('admin',):
+        if session.get('role') != 'admin':
             return jsonify({'error': 'Admin only', 'code': 403}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+def driver_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if session.get('role') not in ('driver', 'admin'):
+            return jsonify({'error': 'Driver only', 'code': 403}), 403
         return f(*args, **kwargs)
     return decorated
 
@@ -117,51 +117,52 @@ def mins_to_time(m: int) -> str:
 
 def cluster_and_schedule(user_time: str, ride_type: str, user_id: int):
     """
-    Find nearby bookings within ±15 min, average the times,
-    snap to nearest 5 min.  Returns (scheduled_time, group_id_or_None).
+    Find nearby open groups within ±15 min that still have capacity.
+    Returns (scheduled_time, group_id).
     """
     t_min = time_to_mins(user_time)
     today = date.today().isoformat()
 
-    # Find open groups for same type + same day within ±15 min
     open_groups = query(
-        """SELECT rg.id, rg.scheduled_time,
-                  COUNT(b.id) AS pax
+        """SELECT rg.id, rg.scheduled_time, rg.vehicle_id,
+                  COUNT(b.id) AS pax,
+                  COALESCE(v.capacity, 10) AS cap
            FROM ride_groups rg
-           JOIN bookings b ON b.group_id = rg.id
+           LEFT JOIN vehicles v ON v.id = rg.vehicle_id
+           LEFT JOIN bookings b ON b.group_id = rg.id
+               AND b.status NOT IN ('cancelled','completed')
            WHERE rg.type = ? AND rg.status = 'open'
              AND DATE(rg.created_at) = ?
            GROUP BY rg.id
-           HAVING pax < 10""",
+           HAVING pax < cap OR rg.vehicle_id IS NULL""",
         (ride_type, today)
     )
+
+    # Also enforce default cap of 10 for unassigned groups
+    open_groups = [g for g in open_groups if g['pax'] < (g['cap'] or 10)]
 
     best_group = None
     best_diff  = 9999
 
-    for g in open_groups:
-        g_min = time_to_mins(g['scheduled_time'])
+    for grp in open_groups:
+        g_min = time_to_mins(grp['scheduled_time'])
         diff  = abs(g_min - t_min)
         if diff <= 15 and diff < best_diff:
             best_diff  = diff
-            best_group = g
+            best_group = grp
 
     if best_group:
-        # Recalculate average time including new booking
         pax_times = query(
             "SELECT preferred_time FROM bookings WHERE group_id = ?",
             (best_group['id'],)
         )
         all_mins = [time_to_mins(r['preferred_time']) for r in pax_times] + [t_min]
-        avg = round(sum(all_mins) / len(all_mins) / 5) * 5
+        avg      = round(sum(all_mins) / len(all_mins) / 5) * 5
         new_time = mins_to_time(avg)
-
-        # Update group scheduled time
         mutate("UPDATE ride_groups SET scheduled_time = ? WHERE id = ?",
                (new_time, best_group['id']))
         return new_time, best_group['id']
 
-    # No suitable group — create a new one
     snapped = mins_to_time(round(t_min / 5) * 5)
     gid = mutate(
         "INSERT INTO ride_groups (type, scheduled_time) VALUES (?, ?)",
@@ -172,7 +173,7 @@ def cluster_and_schedule(user_time: str, ride_type: str, user_id: int):
 def osrm_route(stops):
     """
     stops: list of {lat, lon, label}
-    Returns {distance_km, duration_min, ordered_stops} or None
+    Returns {distance_km, duration_min, ordered_stops} or None.
     """
     if len(stops) < 2:
         return None
@@ -187,8 +188,8 @@ def osrm_route(stops):
         if data.get('code') == 'Ok':
             route = data['routes'][0]
             return {
-                'distance_km':  round(route['distance'] / 1000, 1),
-                'duration_min': round(route['duration'] / 60),
+                'distance_km':   round(route['distance'] / 1000, 1),
+                'duration_min':  round(route['duration'] / 60),
                 'ordered_stops': stops
             }
     except Exception:
@@ -199,13 +200,14 @@ def osrm_route(stops):
 
 @app.route('/api/auth/register', methods=['POST'])
 def register():
-    d = request.json
-    name, phone, pin = d.get('name','').strip(), d.get('phone','').strip(), d.get('pin','')
-    room = d.get('room_number', '').strip()
+    d    = request.json
+    name  = d.get('name', '').strip()
+    phone = d.get('phone', '').strip()
+    pin   = d.get('pin', '')
+    room  = d.get('room_number', '').strip()
     if not all([name, phone, len(pin) == 4]):
         return jsonify({'error': 'name, phone and 4-digit pin required'}), 400
-    existing = query("SELECT id FROM users WHERE phone = ?", (phone,), one=True)
-    if existing:
+    if query("SELECT id FROM users WHERE phone = ?", (phone,), one=True):
         return jsonify({'error': 'Phone already registered'}), 409
     uid = mutate(
         "INSERT INTO users (name, phone, room_number, pin_hash) VALUES (?, ?, ?, ?)",
@@ -214,14 +216,15 @@ def register():
     session['user_id'] = uid
     session['name']    = name
     session['role']    = 'resident'
-    return jsonify({'message': 'Registered', 'user_id': uid})
+    return jsonify({'message': 'Registered', 'user_id': uid, 'role': 'resident'})
 
 @app.route('/api/auth/login', methods=['POST'])
 def login():
-    d = request.json
-    phone, pin = d.get('phone','').strip(), d.get('pin','')
-    user = query("SELECT * FROM users WHERE phone = ? AND pin_hash = ?",
-                 (phone, pin_hash(pin)), one=True)
+    d     = request.json
+    phone = d.get('phone', '').strip()
+    pin   = d.get('pin', '')
+    user  = query("SELECT * FROM users WHERE phone = ? AND pin_hash = ?",
+                  (phone, pin_hash(pin)), one=True)
     if not user:
         return jsonify({'error': 'Invalid phone or PIN'}), 401
     session['user_id'] = user['id']
@@ -245,18 +248,17 @@ def me():
 @app.route('/api/book', methods=['POST'])
 @login_required
 def book_ride():
-    d = request.json
-    user_id = session['user_id']
+    d              = request.json
+    user_id        = session['user_id']
     ride_type      = d.get('type')
     lat            = d.get('lat')
     lon            = d.get('lon')
     location_label = d.get('location_label', '')
     preferred_time = d.get('preferred_time')
 
-    if not all([ride_type in ('pickup','drop'), lat, lon, preferred_time, location_label]):
+    if not all([ride_type in ('pickup', 'drop'), lat, lon, preferred_time, location_label]):
         return jsonify({'error': 'Missing fields'}), 400
 
-    # Enforce: max 1 pickup + 1 drop per user per day
     today = date.today().isoformat()
     existing = query(
         """SELECT id FROM bookings
@@ -276,25 +278,23 @@ def book_ride():
         (user_id, ride_type, lat, lon, location_label, preferred_time, scheduled_time, group_id)
     )
 
-    # Generate / update route for group
     _update_group_route(group_id)
 
-    booking = query("SELECT * FROM bookings WHERE id = ?", (bid,), one=True)
-    group   = query("SELECT * FROM ride_groups WHERE id = ?", (group_id,), one=True)
+    pax_count = query("SELECT COUNT(*) as c FROM bookings WHERE group_id = ?",
+                      (group_id,), one=True)['c']
 
     return jsonify({
-        'booking_id':      bid,
-        'group_id':        group_id,
-        'preferred_time':  preferred_time,
-        'scheduled_time':  scheduled_time,
-        'adjusted':        scheduled_time != preferred_time,
-        'pax_in_group':    query("SELECT COUNT(*) as c FROM bookings WHERE group_id = ?",
-                                 (group_id,), one=True)['c'],
-        'message': 'Booking confirmed'
+        'booking_id':     bid,
+        'group_id':       group_id,
+        'preferred_time': preferred_time,
+        'scheduled_time': scheduled_time,
+        'adjusted':       scheduled_time != preferred_time,
+        'pax_in_group':   pax_count,
+        'message':        'Booking confirmed'
     })
 
 def _update_group_route(group_id):
-    """Recalculate OSRM route for a group after new booking added."""
+    """Recalculate OSRM route for a group after a new booking is added."""
     group    = query("SELECT * FROM ride_groups WHERE id = ?", (group_id,), one=True)
     bookings = query(
         "SELECT lat, lon, location_label, type FROM bookings WHERE group_id = ?", (group_id,)
@@ -302,11 +302,10 @@ def _update_group_route(group_id):
     if not bookings:
         return
 
-    ostello = {'lat': OSTELLO_LAT, 'lon': OSTELLO_LON, 'label': 'Ostello Belapur'}
+    ostello = {'lat': OSTELLO_LAT, 'lon': OSTELLO_LON, 'label': 'Ostello (Parsik Hill)'}
     stops   = [{'lat': b['lat'], 'lon': b['lon'], 'label': b['location_label']}
                for b in bookings]
 
-    # Drop: Ostello → all stops. Pickup: all stops → Ostello
     if group['type'] == 'drop':
         ordered = [ostello] + stops
     else:
@@ -322,7 +321,7 @@ def _update_group_route(group_id):
 @login_required
 def my_bookings():
     today = date.today().isoformat()
-    rows = query(
+    rows  = query(
         """SELECT b.*, rg.scheduled_time AS grp_time, rg.status AS grp_status,
                   v.driver_name, v.plate
            FROM bookings b
@@ -371,31 +370,34 @@ def save_location():
 
 @app.route('/api/route', methods=['POST'])
 def get_route():
-    d = request.json
-    stops = d.get('stops', [])
+    d      = request.json
+    stops  = d.get('stops', [])
     result = osrm_route(stops)
     if not result:
         return jsonify({'error': 'Route not available'}), 502
     return jsonify(result)
 
-@app.route('/api/health/db', methods=['GET'])
+# ─── HEALTH ──────────────────────────────────────────────────────────────────
+
+@app.route('/api/health')
+@app.route('/api/health/db')
 def db_health():
-    """Basic DB health/status including core table presence."""
+    """DB health + core table presence check — useful for deploy probes."""
     required_tables = [
         'users', 'vehicles', 'bookings', 'ride_groups',
-        'saved_locations', 'system_locations', 'system_status'
+        'saved_locations', 'system_locations', 'system_status', 'driver_locations'
     ]
-    table_rows = query("SELECT name FROM sqlite_master WHERE type = 'table'")
+    table_rows      = query("SELECT name FROM sqlite_master WHERE type='table'")
     existing_tables = {r['name'] for r in table_rows}
-    missing = [t for t in required_tables if t not in existing_tables]
-    status_rows = query("SELECT key, value, updated_at FROM system_status ORDER BY key")
+    missing         = [t for t in required_tables if t not in existing_tables]
+    status_rows     = query("SELECT key, value, updated_at FROM system_status ORDER BY key")
 
     return jsonify({
-        'db_path': DB_PATH,
-        'db_ok': len(missing) == 0,
+        'db_path':        DB_PATH,
+        'db_ok':          len(missing) == 0,
         'missing_tables': missing,
-        'status': [dict(r) for r in status_rows],
-    }), (200 if len(missing) == 0 else 500)
+        'status':         [dict(r) for r in status_rows],
+    }), (200 if not missing else 500)
 
 # ─── ADMIN ROUTES ─────────────────────────────────────────────────────────────
 
@@ -403,45 +405,62 @@ def db_health():
 @login_required
 @admin_required
 def admin_groups():
-    today = date.today().isoformat()
+    today  = date.today().isoformat()
     groups = query(
         """SELECT rg.*, v.driver_name, v.plate,
                   COUNT(b.id) AS pax
            FROM ride_groups rg
            LEFT JOIN vehicles v ON rg.vehicle_id = v.id
-           LEFT JOIN bookings b ON b.group_id = rg.id AND b.status NOT IN ('cancelled')
+           LEFT JOIN bookings b ON b.group_id = rg.id
+               AND b.status NOT IN ('cancelled')
            WHERE DATE(rg.created_at) = ?
            GROUP BY rg.id
            ORDER BY rg.scheduled_time""",
         (today,)
     )
     result = []
-    for g in groups:
-        g_dict = dict(g)
+    for grp in groups:
+        gd = dict(grp)
         passengers = query(
             """SELECT b.*, u.name, u.room_number
                FROM bookings b JOIN users u ON b.user_id = u.id
                WHERE b.group_id = ? AND b.status NOT IN ('cancelled')""",
-            (g['id'],)
+            (grp['id'],)
         )
-        g_dict['passengers'] = [dict(p) for p in passengers]
-        if g_dict.get('ordered_stops'):
-            g_dict['ordered_stops'] = json.loads(g_dict['ordered_stops'])
-        if g_dict.get('route_data'):
-            g_dict['route_data'] = json.loads(g_dict['route_data'])
-        result.append(g_dict)
+        gd['passengers'] = [dict(p) for p in passengers]
+        if gd.get('ordered_stops'):
+            gd['ordered_stops'] = json.loads(gd['ordered_stops'])
+        if gd.get('route_data'):
+            gd['route_data'] = json.loads(gd['route_data'])
+        result.append(gd)
     return jsonify(result)
 
 @app.route('/api/admin/groups/<int:gid>/assign', methods=['POST'])
 @login_required
 @admin_required
 def assign_vehicle(gid):
-    d = request.json
+    d   = request.json
     vid = d.get('vehicle_id')
+
+    # Capacity check
+    vehicle = query("SELECT * FROM vehicles WHERE id = ?", (vid,), one=True)
+    if not vehicle:
+        return jsonify({'error': 'Vehicle not found'}), 404
+
+    pax_count = query(
+        """SELECT COUNT(*) as c FROM bookings
+           WHERE group_id = ? AND status NOT IN ('cancelled','completed')""",
+        (gid,), one=True
+    )['c']
+
+    if pax_count > vehicle['capacity']:
+        return jsonify({
+            'error': f"Group has {pax_count} passengers but vehicle capacity is {vehicle['capacity']}"
+        }), 409
+
     mutate("UPDATE ride_groups SET vehicle_id = ?, status = 'assigned' WHERE id = ?", (vid, gid))
     mutate("UPDATE bookings SET status = 'assigned' WHERE group_id = ?", (gid,))
-    v = query("SELECT * FROM vehicles WHERE id = ?", (vid,), one=True)
-    return jsonify({'message': f'Vehicle {v["plate"]} assigned'})
+    return jsonify({'message': f"Vehicle {vehicle['plate']} assigned"})
 
 @app.route('/api/admin/groups/<int:gid>/reschedule', methods=['POST'])
 @login_required
@@ -463,18 +482,17 @@ def list_vehicles():
 @login_required
 @admin_required
 def add_driver():
-    d = request.json or {}
-    name = d.get('name', '').strip()
-    phone = d.get('phone', '').strip()
-    pin = d.get('pin', '').strip()
-    plate = d.get('plate', '').strip().upper()
+    d        = request.json or {}
+    name     = d.get('name', '').strip()
+    phone    = d.get('phone', '').strip()
+    pin      = d.get('pin', '').strip()
+    plate    = d.get('plate', '').strip().upper()
     capacity = int(d.get('capacity', 10) or 10)
 
     if not all([name, phone, plate]) or len(pin) != 4:
         return jsonify({'error': 'name, phone, 4-digit pin, and plate are required'}), 400
     if capacity < 1:
         return jsonify({'error': 'capacity must be at least 1'}), 400
-
     if query("SELECT id FROM users WHERE phone = ?", (phone,), one=True):
         return jsonify({'error': 'Phone already exists'}), 409
     if query("SELECT id FROM vehicles WHERE plate = ?", (plate,), one=True):
@@ -491,26 +509,40 @@ def add_driver():
             (name, plate, capacity)
         ).lastrowid
         db.commit()
-        return jsonify({
-            'message': 'Driver created successfully',
-            'driver_user_id': uid,
-            'vehicle_id': vid,
-        }), 201
+        return jsonify({'message': 'Driver created', 'driver_user_id': uid, 'vehicle_id': vid}), 201
     except sqlite3.IntegrityError:
         db.rollback()
-        return jsonify({'error': 'Failed to create driver due to duplicate data'}), 409
+        return jsonify({'error': 'Duplicate data'}), 409
+
+# ── Admin: live driver locations ───────────────────────────────────────────────
+
+@app.route('/api/admin/driver-locations', methods=['GET'])
+@login_required
+@admin_required
+def admin_driver_locations():
+    """Latest GPS ping per vehicle."""
+    rows = query(
+        """SELECT dl.vehicle_id, v.driver_name, v.plate,
+                  dl.lat, dl.lon, dl.recorded_at
+           FROM driver_locations dl
+           JOIN vehicles v ON v.id = dl.vehicle_id
+           WHERE dl.id IN (
+             SELECT MAX(id) FROM driver_locations GROUP BY vehicle_id
+           )
+           ORDER BY dl.recorded_at DESC"""
+    )
+    return jsonify([dict(r) for r in rows])
 
 # ─── DRIVER ROUTES ────────────────────────────────────────────────────────────
 
 @app.route('/api/driver/my-group')
 @login_required
 def driver_group():
-    """Driver sees their assigned group for today."""
-    today  = date.today().isoformat()
-    driver = query("SELECT * FROM users WHERE id = ?", (session['user_id'],), one=True)
+    today   = date.today().isoformat()
+    driver  = query("SELECT * FROM users WHERE id = ?", (session['user_id'],), one=True)
     vehicle = query("SELECT * FROM vehicles WHERE driver_name = ?", (driver['name'],), one=True)
     if not vehicle:
-        return jsonify({'error': 'No vehicle assigned'}), 404
+        return jsonify([])
     groups = query(
         """SELECT rg.* FROM ride_groups rg
            WHERE rg.vehicle_id = ? AND DATE(rg.created_at) = ?
@@ -518,32 +550,66 @@ def driver_group():
         (vehicle['id'], today)
     )
     result = []
-    for g in groups:
-        gd = dict(g)
+    for grp in groups:
+        gd  = dict(grp)
         pax = query(
-            """SELECT b.location_label, b.lat, b.lon, b.type, u.name, u.room_number, u.phone
+            """SELECT b.location_label, b.lat, b.lon, b.type,
+                      u.name, u.room_number, u.phone
                FROM bookings b JOIN users u ON b.user_id = u.id
                WHERE b.group_id = ? AND b.status NOT IN ('cancelled','completed')""",
-            (g['id'],)
+            (grp['id'],)
         )
         gd['passengers'] = [dict(p) for p in pax]
         if gd.get('ordered_stops'):
             gd['ordered_stops'] = json.loads(gd['ordered_stops'])
+        if gd.get('route_data'):
+            gd['route_data'] = json.loads(gd['route_data'])
         result.append(gd)
     return jsonify(result)
 
-# ─── PAGES ────────────────────────────────────────────────────────────────────
+@app.route('/api/driver/location', methods=['POST'])
+@login_required
+@driver_required
+def post_driver_location():
+    """Driver posts current GPS coordinates."""
+    d       = request.json or {}
+    lat     = d.get('lat')
+    lon     = d.get('lon')
+    if lat is None or lon is None:
+        return jsonify({'error': 'lat and lon required'}), 400
+
+    driver  = query("SELECT * FROM users WHERE id = ?", (session['user_id'],), one=True)
+    vehicle = query("SELECT * FROM vehicles WHERE driver_name = ?", (driver['name'],), one=True)
+    if not vehicle:
+        return jsonify({'error': 'No vehicle assigned to driver'}), 404
+
+    mutate(
+        "INSERT INTO driver_locations (vehicle_id, user_id, lat, lon) VALUES (?, ?, ?, ?)",
+        (vehicle['id'], session['user_id'], lat, lon)
+    )
+    return jsonify({'message': 'Location updated'})
+
+# ─── PAGES (role-aware redirects) ─────────────────────────────────────────────
 
 @app.route('/')
 def index():
+    role = session.get('role')
+    if role == 'admin':
+        return redirect(url_for('admin_page'))
+    if role == 'driver':
+        return redirect(url_for('driver_page'))
     return render_template('index.html')
 
 @app.route('/admin')
 def admin_page():
+    if session.get('role') != 'admin':
+        return redirect('/?next=admin')
     return render_template('admin.html')
 
 @app.route('/driver')
 def driver_page():
+    if session.get('role') not in ('driver', 'admin'):
+        return redirect('/?next=driver')
     return render_template('driver.html')
 
 # ─── INIT ─────────────────────────────────────────────────────────────────────
@@ -551,5 +617,569 @@ def driver_page():
 if __name__ == '__main__':
     ensure_db_ready()
     normalize_seed_user_hashes()
-    print('✅ Database ready')
+    print('Database ready')
     app.run(debug=True, port=5001)
+
+
+
+
+
+
+
+
+
+# """older version
+# OSTELLO RIDES — Flask Backend
+# CBD Belapur, Navi Mumbai
+# """
+
+# from flask import Flask, render_template, request, jsonify, session, g
+# import sqlite3, json, requests, hashlib, os
+# from datetime import datetime, date
+# from functools import wraps
+
+# app = Flask(__name__, template_folder='../frontend/templates',
+#             static_folder='../frontend/static')
+# app.secret_key = os.environ.get('SECRET_KEY', 'ostello-rides-dev-secret-change-in-prod')
+
+# DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'database', 'ostello.db')
+# OSRM_BASE = 'https://router.project-osrm.org/route/v1/foot'
+# OSTELLO_LAT, OSTELLO_LON = 19.0176, 73.0360   # 171 Parsik Hill, CBD Belapur
+
+# # ─── DB HELPERS ──────────────────────────────────────────────────────────────
+
+# def get_db():
+#     if 'db' not in g:
+#         g.db = sqlite3.connect(DB_PATH)
+#         g.db.row_factory = sqlite3.Row
+#         g.db.execute('PRAGMA foreign_keys = ON')
+#     return g.db
+
+# @app.teardown_appcontext
+# def close_db(e=None):
+#     db = g.pop('db', None)
+#     if db: db.close()
+
+# def init_db():
+#     schema = os.path.join(os.path.dirname(__file__), '..', 'database', 'schema.sql')
+#     with app.app_context():
+#         db = get_db()
+#         with open(schema, encoding='utf-8') as f:
+#             db.executescript(f.read())
+#         db.commit()
+
+# def ensure_db_ready():
+#     """
+#     Initialize schema when DB file is missing or exists without core tables.
+#     This avoids "no such table: users" when a previous init partially failed.
+#     """
+#     with app.app_context():
+#         db = get_db()
+#         required_tables = (
+#             'users', 'vehicles', 'bookings', 'ride_groups',
+#             'saved_locations', 'system_locations', 'system_status'
+#         )
+#         placeholders = ','.join('?' for _ in required_tables)
+#         existing_rows = db.execute(
+#             f"SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ({placeholders})",
+#             required_tables
+#         ).fetchall()
+#         existing = {r['name'] for r in existing_rows}
+#         if len(existing) != len(required_tables):
+#             init_db()
+
+# def normalize_seed_user_hashes():
+#     """
+#     Backfill old dummy seeded hashes to the current SHA256 pin scheme.
+#     Keeps login consistent for default bootstrap users.
+#     """
+#     with app.app_context():
+#         db = get_db()
+#         admin = db.execute("SELECT id, pin_hash FROM users WHERE phone = ?", ('9999999999',)).fetchone()
+#         if admin and admin['pin_hash'] and admin['pin_hash'].startswith('$2b$12$dummy'):
+#             db.execute("UPDATE users SET pin_hash = ? WHERE id = ?", (pin_hash('0000'), admin['id']))
+
+#         driver = db.execute("SELECT id, pin_hash FROM users WHERE phone = ?", ('9888888881',)).fetchone()
+#         if driver and driver['pin_hash'] and driver['pin_hash'].startswith('$2b$12$dummy'):
+#             db.execute("UPDATE users SET pin_hash = ? WHERE id = ?", (pin_hash('1111'), driver['id']))
+#         db.commit()
+
+# def query(sql, args=(), one=False):
+#     cur = get_db().execute(sql, args)
+#     rv = cur.fetchall()
+#     return (rv[0] if rv else None) if one else rv
+
+# def mutate(sql, args=()):
+#     db = get_db()
+#     cur = db.execute(sql, args)
+#     db.commit()
+#     return cur.lastrowid
+
+# # ─── AUTH HELPERS ─────────────────────────────────────────────────────────────
+
+# def pin_hash(pin: str) -> str:
+#     return hashlib.sha256(pin.encode()).hexdigest()
+
+# def login_required(f):
+#     @wraps(f)
+#     def decorated(*args, **kwargs):
+#         if 'user_id' not in session:
+#             return jsonify({'error': 'Not logged in', 'code': 401}), 401
+#         return f(*args, **kwargs)
+#     return decorated
+
+# def admin_required(f):
+#     @wraps(f)
+#     def decorated(*args, **kwargs):
+#         if session.get('role') not in ('admin',):
+#             return jsonify({'error': 'Admin only', 'code': 403}), 403
+#         return f(*args, **kwargs)
+#     return decorated
+
+# # ─── SCHEDULING LOGIC ─────────────────────────────────────────────────────────
+
+# def time_to_mins(t: str) -> int:
+#     h, m = map(int, t.split(':'))
+#     return h * 60 + m
+
+# def mins_to_time(m: int) -> str:
+#     return f"{m // 60:02d}:{m % 60:02d}"
+
+# def cluster_and_schedule(user_time: str, ride_type: str, user_id: int):
+#     """
+#     Find nearby bookings within ±15 min, average the times,
+#     snap to nearest 5 min.  Returns (scheduled_time, group_id_or_None).
+#     """
+#     t_min = time_to_mins(user_time)
+#     today = date.today().isoformat()
+
+#     # Find open groups for same type + same day within ±15 min
+#     open_groups = query(
+#         """SELECT rg.id, rg.scheduled_time,
+#                   COUNT(b.id) AS pax
+#            FROM ride_groups rg
+#            JOIN bookings b ON b.group_id = rg.id
+#            WHERE rg.type = ? AND rg.status = 'open'
+#              AND DATE(rg.created_at) = ?
+#            GROUP BY rg.id
+#            HAVING pax < 10""",
+#         (ride_type, today)
+#     )
+
+#     best_group = None
+#     best_diff  = 9999
+
+#     for g in open_groups:
+#         g_min = time_to_mins(g['scheduled_time'])
+#         diff  = abs(g_min - t_min)
+#         if diff <= 15 and diff < best_diff:
+#             best_diff  = diff
+#             best_group = g
+
+#     if best_group:
+#         # Recalculate average time including new booking
+#         pax_times = query(
+#             "SELECT preferred_time FROM bookings WHERE group_id = ?",
+#             (best_group['id'],)
+#         )
+#         all_mins = [time_to_mins(r['preferred_time']) for r in pax_times] + [t_min]
+#         avg = round(sum(all_mins) / len(all_mins) / 5) * 5
+#         new_time = mins_to_time(avg)
+
+#         # Update group scheduled time
+#         mutate("UPDATE ride_groups SET scheduled_time = ? WHERE id = ?",
+#                (new_time, best_group['id']))
+#         return new_time, best_group['id']
+
+#     # No suitable group — create a new one
+#     snapped = mins_to_time(round(t_min / 5) * 5)
+#     gid = mutate(
+#         "INSERT INTO ride_groups (type, scheduled_time) VALUES (?, ?)",
+#         (ride_type, snapped)
+#     )
+#     return snapped, gid
+
+# def osrm_route(stops):
+#     """
+#     stops: list of {lat, lon, label}
+#     Returns {distance_km, duration_min, ordered_stops} or None
+#     """
+#     if len(stops) < 2:
+#         return None
+#     coords = ';'.join(f"{s['lon']},{s['lat']}" for s in stops)
+#     try:
+#         r = requests.get(
+#             f"{OSRM_BASE}/{coords}",
+#             params={'overview': 'false', 'steps': 'false'},
+#             timeout=6
+#         )
+#         data = r.json()
+#         if data.get('code') == 'Ok':
+#             route = data['routes'][0]
+#             return {
+#                 'distance_km':  round(route['distance'] / 1000, 1),
+#                 'duration_min': round(route['duration'] / 60),
+#                 'ordered_stops': stops
+#             }
+#     except Exception:
+#         pass
+#     return None
+
+# # ─── AUTH ROUTES ──────────────────────────────────────────────────────────────
+
+# @app.route('/api/auth/register', methods=['POST'])
+# def register():
+#     d = request.json
+#     name, phone, pin = d.get('name','').strip(), d.get('phone','').strip(), d.get('pin','')
+#     room = d.get('room_number', '').strip()
+#     if not all([name, phone, len(pin) == 4]):
+#         return jsonify({'error': 'name, phone and 4-digit pin required'}), 400
+#     existing = query("SELECT id FROM users WHERE phone = ?", (phone,), one=True)
+#     if existing:
+#         return jsonify({'error': 'Phone already registered'}), 409
+#     uid = mutate(
+#         "INSERT INTO users (name, phone, room_number, pin_hash) VALUES (?, ?, ?, ?)",
+#         (name, phone, room, pin_hash(pin))
+#     )
+#     session['user_id'] = uid
+#     session['name']    = name
+#     session['role']    = 'resident'
+#     return jsonify({'message': 'Registered', 'user_id': uid})
+
+# @app.route('/api/auth/login', methods=['POST'])
+# def login():
+#     d = request.json
+#     phone, pin = d.get('phone','').strip(), d.get('pin','')
+#     user = query("SELECT * FROM users WHERE phone = ? AND pin_hash = ?",
+#                  (phone, pin_hash(pin)), one=True)
+#     if not user:
+#         return jsonify({'error': 'Invalid phone or PIN'}), 401
+#     session['user_id'] = user['id']
+#     session['name']    = user['name']
+#     session['role']    = user['role']
+#     return jsonify({'message': 'Logged in', 'name': user['name'], 'role': user['role']})
+
+# @app.route('/api/auth/logout', methods=['POST'])
+# def logout():
+#     session.clear()
+#     return jsonify({'message': 'Logged out'})
+
+# @app.route('/api/auth/me')
+# def me():
+#     if 'user_id' not in session:
+#         return jsonify({'logged_in': False})
+#     return jsonify({'logged_in': True, 'name': session['name'], 'role': session['role']})
+
+# # ─── BOOKING ROUTES ────────────────────────────────────────────────────────────
+
+# @app.route('/api/book', methods=['POST'])
+# @login_required
+# def book_ride():
+#     d = request.json
+#     user_id = session['user_id']
+#     ride_type      = d.get('type')
+#     lat            = d.get('lat')
+#     lon            = d.get('lon')
+#     location_label = d.get('location_label', '')
+#     preferred_time = d.get('preferred_time')
+
+#     if not all([ride_type in ('pickup','drop'), lat, lon, preferred_time, location_label]):
+#         return jsonify({'error': 'Missing fields'}), 400
+
+#     # Enforce: max 1 pickup + 1 drop per user per day
+#     today = date.today().isoformat()
+#     existing = query(
+#         """SELECT id FROM bookings
+#            WHERE user_id = ? AND type = ? AND DATE(created_at) = ?
+#              AND status NOT IN ('cancelled','completed')""",
+#         (user_id, ride_type, today), one=True
+#     )
+#     if existing:
+#         return jsonify({'error': f'You already have a {ride_type} booking today'}), 409
+
+#     scheduled_time, group_id = cluster_and_schedule(preferred_time, ride_type, user_id)
+
+#     bid = mutate(
+#         """INSERT INTO bookings
+#            (user_id, type, lat, lon, location_label, preferred_time, scheduled_time, group_id)
+#            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+#         (user_id, ride_type, lat, lon, location_label, preferred_time, scheduled_time, group_id)
+#     )
+
+#     # Generate / update route for group
+#     _update_group_route(group_id)
+
+#     booking = query("SELECT * FROM bookings WHERE id = ?", (bid,), one=True)
+#     group   = query("SELECT * FROM ride_groups WHERE id = ?", (group_id,), one=True)
+
+#     return jsonify({
+#         'booking_id':      bid,
+#         'group_id':        group_id,
+#         'preferred_time':  preferred_time,
+#         'scheduled_time':  scheduled_time,
+#         'adjusted':        scheduled_time != preferred_time,
+#         'pax_in_group':    query("SELECT COUNT(*) as c FROM bookings WHERE group_id = ?",
+#                                  (group_id,), one=True)['c'],
+#         'message': 'Booking confirmed'
+#     })
+
+# def _update_group_route(group_id):
+#     """Recalculate OSRM route for a group after new booking added."""
+#     group    = query("SELECT * FROM ride_groups WHERE id = ?", (group_id,), one=True)
+#     bookings = query(
+#         "SELECT lat, lon, location_label, type FROM bookings WHERE group_id = ?", (group_id,)
+#     )
+#     if not bookings:
+#         return
+
+#     ostello = {'lat': OSTELLO_LAT, 'lon': OSTELLO_LON, 'label': 'Ostello Belapur'}
+#     stops   = [{'lat': b['lat'], 'lon': b['lon'], 'label': b['location_label']}
+#                for b in bookings]
+
+#     # Drop: Ostello → all stops. Pickup: all stops → Ostello
+#     if group['type'] == 'drop':
+#         ordered = [ostello] + stops
+#     else:
+#         ordered = stops + [ostello]
+
+#     route = osrm_route(ordered)
+#     mutate(
+#         "UPDATE ride_groups SET route_data = ?, ordered_stops = ? WHERE id = ?",
+#         (json.dumps(route), json.dumps(ordered), group_id)
+#     )
+
+# @app.route('/api/bookings/my', methods=['GET'])
+# @login_required
+# def my_bookings():
+#     today = date.today().isoformat()
+#     rows = query(
+#         """SELECT b.*, rg.scheduled_time AS grp_time, rg.status AS grp_status,
+#                   v.driver_name, v.plate
+#            FROM bookings b
+#            LEFT JOIN ride_groups rg ON b.group_id = rg.id
+#            LEFT JOIN vehicles    v  ON rg.vehicle_id = v.id
+#            WHERE b.user_id = ? AND DATE(b.created_at) = ?
+#            ORDER BY b.created_at DESC""",
+#         (session['user_id'], today)
+#     )
+#     return jsonify([dict(r) for r in rows])
+
+# @app.route('/api/bookings/<int:bid>/cancel', methods=['POST'])
+# @login_required
+# def cancel_booking(bid):
+#     b = query("SELECT * FROM bookings WHERE id = ? AND user_id = ?",
+#               (bid, session['user_id']), one=True)
+#     if not b:
+#         return jsonify({'error': 'Not found'}), 404
+#     mutate("UPDATE bookings SET status = 'cancelled' WHERE id = ?", (bid,))
+#     return jsonify({'message': 'Cancelled'})
+
+# # ─── LOCATIONS ────────────────────────────────────────────────────────────────
+
+# @app.route('/api/locations')
+# def system_locations():
+#     rows = query("SELECT * FROM system_locations WHERE active = 1 ORDER BY label")
+#     return jsonify([dict(r) for r in rows])
+
+# @app.route('/api/locations/saved', methods=['GET'])
+# @login_required
+# def saved_locations():
+#     rows = query("SELECT * FROM saved_locations WHERE user_id = ?", (session['user_id'],))
+#     return jsonify([dict(r) for r in rows])
+
+# @app.route('/api/locations/saved', methods=['POST'])
+# @login_required
+# def save_location():
+#     d = request.json
+#     mutate(
+#         "INSERT INTO saved_locations (user_id, label, lat, lon) VALUES (?, ?, ?, ?)",
+#         (session['user_id'], d['label'], d['lat'], d['lon'])
+#     )
+#     return jsonify({'message': 'Saved'})
+
+# # ─── ROUTE QUERY ─────────────────────────────────────────────────────────────
+
+# @app.route('/api/route', methods=['POST'])
+# def get_route():
+#     d = request.json
+#     stops = d.get('stops', [])
+#     result = osrm_route(stops)
+#     if not result:
+#         return jsonify({'error': 'Route not available'}), 502
+#     return jsonify(result)
+
+# @app.route('/api/health/db', methods=['GET'])
+# def db_health():
+#     """Basic DB health/status including core table presence."""
+#     required_tables = [
+#         'users', 'vehicles', 'bookings', 'ride_groups',
+#         'saved_locations', 'system_locations', 'system_status'
+#     ]
+#     table_rows = query("SELECT name FROM sqlite_master WHERE type = 'table'")
+#     existing_tables = {r['name'] for r in table_rows}
+#     missing = [t for t in required_tables if t not in existing_tables]
+#     status_rows = query("SELECT key, value, updated_at FROM system_status ORDER BY key")
+
+#     return jsonify({
+#         'db_path': DB_PATH,
+#         'db_ok': len(missing) == 0,
+#         'missing_tables': missing,
+#         'status': [dict(r) for r in status_rows],
+#     }), (200 if len(missing) == 0 else 500)
+
+# # ─── ADMIN ROUTES ─────────────────────────────────────────────────────────────
+
+# @app.route('/api/admin/groups', methods=['GET'])
+# @login_required
+# @admin_required
+# def admin_groups():
+#     today = date.today().isoformat()
+#     groups = query(
+#         """SELECT rg.*, v.driver_name, v.plate,
+#                   COUNT(b.id) AS pax
+#            FROM ride_groups rg
+#            LEFT JOIN vehicles v ON rg.vehicle_id = v.id
+#            LEFT JOIN bookings b ON b.group_id = rg.id AND b.status NOT IN ('cancelled')
+#            WHERE DATE(rg.created_at) = ?
+#            GROUP BY rg.id
+#            ORDER BY rg.scheduled_time""",
+#         (today,)
+#     )
+#     result = []
+#     for g in groups:
+#         g_dict = dict(g)
+#         passengers = query(
+#             """SELECT b.*, u.name, u.room_number
+#                FROM bookings b JOIN users u ON b.user_id = u.id
+#                WHERE b.group_id = ? AND b.status NOT IN ('cancelled')""",
+#             (g['id'],)
+#         )
+#         g_dict['passengers'] = [dict(p) for p in passengers]
+#         if g_dict.get('ordered_stops'):
+#             g_dict['ordered_stops'] = json.loads(g_dict['ordered_stops'])
+#         if g_dict.get('route_data'):
+#             g_dict['route_data'] = json.loads(g_dict['route_data'])
+#         result.append(g_dict)
+#     return jsonify(result)
+
+# @app.route('/api/admin/groups/<int:gid>/assign', methods=['POST'])
+# @login_required
+# @admin_required
+# def assign_vehicle(gid):
+#     d = request.json
+#     vid = d.get('vehicle_id')
+#     mutate("UPDATE ride_groups SET vehicle_id = ?, status = 'assigned' WHERE id = ?", (vid, gid))
+#     mutate("UPDATE bookings SET status = 'assigned' WHERE group_id = ?", (gid,))
+#     v = query("SELECT * FROM vehicles WHERE id = ?", (vid,), one=True)
+#     return jsonify({'message': f'Vehicle {v["plate"]} assigned'})
+
+# @app.route('/api/admin/groups/<int:gid>/reschedule', methods=['POST'])
+# @login_required
+# @admin_required
+# def reschedule_group(gid):
+#     new_time = request.json.get('new_time')
+#     mutate("UPDATE ride_groups SET scheduled_time = ? WHERE id = ?", (new_time, gid))
+#     mutate("UPDATE bookings SET scheduled_time = ? WHERE group_id = ?", (new_time, gid))
+#     return jsonify({'message': f'Rescheduled to {new_time}'})
+
+# @app.route('/api/admin/vehicles', methods=['GET'])
+# @login_required
+# @admin_required
+# def list_vehicles():
+#     rows = query("SELECT * FROM vehicles WHERE active = 1")
+#     return jsonify([dict(r) for r in rows])
+
+# @app.route('/api/admin/drivers', methods=['POST'])
+# @login_required
+# @admin_required
+# def add_driver():
+#     d = request.json or {}
+#     name = d.get('name', '').strip()
+#     phone = d.get('phone', '').strip()
+#     pin = d.get('pin', '').strip()
+#     plate = d.get('plate', '').strip().upper()
+#     capacity = int(d.get('capacity', 10) or 10)
+
+#     if not all([name, phone, plate]) or len(pin) != 4:
+#         return jsonify({'error': 'name, phone, 4-digit pin, and plate are required'}), 400
+#     if capacity < 1:
+#         return jsonify({'error': 'capacity must be at least 1'}), 400
+
+#     if query("SELECT id FROM users WHERE phone = ?", (phone,), one=True):
+#         return jsonify({'error': 'Phone already exists'}), 409
+#     if query("SELECT id FROM vehicles WHERE plate = ?", (plate,), one=True):
+#         return jsonify({'error': 'Vehicle plate already exists'}), 409
+
+#     db = get_db()
+#     try:
+#         uid = db.execute(
+#             "INSERT INTO users (name, phone, role, pin_hash) VALUES (?, ?, 'driver', ?)",
+#             (name, phone, pin_hash(pin))
+#         ).lastrowid
+#         vid = db.execute(
+#             "INSERT INTO vehicles (driver_name, plate, capacity, active) VALUES (?, ?, ?, 1)",
+#             (name, plate, capacity)
+#         ).lastrowid
+#         db.commit()
+#         return jsonify({
+#             'message': 'Driver created successfully',
+#             'driver_user_id': uid,
+#             'vehicle_id': vid,
+#         }), 201
+#     except sqlite3.IntegrityError:
+#         db.rollback()
+#         return jsonify({'error': 'Failed to create driver due to duplicate data'}), 409
+
+# # ─── DRIVER ROUTES ────────────────────────────────────────────────────────────
+
+# @app.route('/api/driver/my-group')
+# @login_required
+# def driver_group():
+#     """Driver sees their assigned group for today."""
+#     today  = date.today().isoformat()
+#     driver = query("SELECT * FROM users WHERE id = ?", (session['user_id'],), one=True)
+#     vehicle = query("SELECT * FROM vehicles WHERE driver_name = ?", (driver['name'],), one=True)
+#     if not vehicle:
+#         return jsonify({'error': 'No vehicle assigned'}), 404
+#     groups = query(
+#         """SELECT rg.* FROM ride_groups rg
+#            WHERE rg.vehicle_id = ? AND DATE(rg.created_at) = ?
+#            ORDER BY rg.scheduled_time""",
+#         (vehicle['id'], today)
+#     )
+#     result = []
+#     for g in groups:
+#         gd = dict(g)
+#         pax = query(
+#             """SELECT b.location_label, b.lat, b.lon, b.type, u.name, u.room_number, u.phone
+#                FROM bookings b JOIN users u ON b.user_id = u.id
+#                WHERE b.group_id = ? AND b.status NOT IN ('cancelled','completed')""",
+#             (g['id'],)
+#         )
+#         gd['passengers'] = [dict(p) for p in pax]
+#         if gd.get('ordered_stops'):
+#             gd['ordered_stops'] = json.loads(gd['ordered_stops'])
+#         result.append(gd)
+#     return jsonify(result)
+
+# # ─── PAGES ────────────────────────────────────────────────────────────────────
+
+# @app.route('/')
+# def index():
+#     return render_template('index.html')
+
+# @app.route('/admin')
+# def admin_page():
+#     return render_template('admin.html')
+
+# @app.route('/driver')
+# def driver_page():
+#     return render_template('driver.html')
+
+# # ─── INIT ─────────────────────────────────────────────────────────────────────
+
+# if __name__ == '__main__':
+#     ensure_db_ready()
+#     normalize_seed_user_hashes()
+#     print('✅ Database ready')
+#     app.run(debug=True, port=5001)

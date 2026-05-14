@@ -192,6 +192,36 @@ select.modal-input{cursor:pointer;}
 @keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 
 .empty{padding:32px;text-align:center;color:var(--text3);font-size:14px;}
+
+/* LIVE DRIVER LOCATIONS PANEL */
+.live-panel{
+  margin:0 24px 20px;padding:16px 20px;
+  background:var(--surface);border:1px solid var(--border2);border-radius:14px;
+  box-shadow:0 4px 20px rgba(0,0,0,.35);
+}
+.live-panel-hd{
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;
+}
+.live-dot-anim{
+  width:8px;height:8px;border-radius:50%;background:var(--green);
+  animation:blink 1.5s infinite;display:inline-block;margin-right:6px;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.driver-loc-row{
+  display:flex;align-items:center;gap:12px;padding:10px 0;
+  border-bottom:1px solid rgba(255,255,255,.04);
+}
+.driver-loc-row:last-child{border-bottom:none;}
+.dlr-av{
+  width:34px;height:34px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,var(--brand-blue),var(--brand-purple));
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:#fff;
+}
+.dlr-name{font-size:13px;font-weight:600;}
+.dlr-plate{font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);}
+.dlr-coords{font-family:'DM Mono',monospace;font-size:11px;color:var(--brand-primary);margin-top:2px;}
+.dlr-time{margin-left:auto;font-size:11px;color:var(--text3);}
 </style>
 </head>
 <body>
@@ -216,6 +246,17 @@ select.modal-input{cursor:pointer;}
   <div class="stat-card"><div class="stat-label">Pending Groups</div><div class="stat-val blue" id="sPend">—</div></div>
   <div class="stat-card"><div class="stat-label">Passengers Today</div><div class="stat-val green" id="sPax">—</div></div>
   <div class="stat-card"><div class="stat-label">Cancelled</div><div class="stat-val red" id="sCanc">—</div></div>
+</div>
+
+<!-- Live Driver Locations -->
+<div class="live-panel">
+  <div class="live-panel-hd">
+    <div class="section-title">
+      <span class="live-dot-anim"></span>Live Driver Locations
+    </div>
+    <button class="refresh-btn" onclick="refreshDriverLocs()">↻ Refresh</button>
+  </div>
+  <div id="driverLocList"><div class="empty" style="padding:16px">No location pings yet — drivers must enable GPS.</div></div>
 </div>
 
 <div class="main">
@@ -446,6 +487,40 @@ async function confirmAddDriver() {
 
 // init
 refresh();
+
+async function refreshDriverLocs() {
+  const locs = await api('/admin/driver-locations');
+  const el   = document.getElementById('driverLocList');
+  if (!locs || locs.error || !locs.length) {
+    el.innerHTML = '<div class="empty" style="padding:16px">No location pings yet — drivers must enable GPS in their view.</div>';
+    return;
+  }
+  el.innerHTML = locs.map(d => {
+    const initials = d.driver_name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const ago = d.recorded_at
+      ? (() => {
+          const diff = Math.round((Date.now() - new Date(d.recorded_at).getTime()) / 1000);
+          if (diff < 60) return `${diff}s ago`;
+          if (diff < 3600) return `${Math.round(diff/60)}m ago`;
+          return `${Math.round(diff/3600)}h ago`;
+        })()
+      : '—';
+    return `
+      <div class="driver-loc-row">
+        <div class="dlr-av">${initials}</div>
+        <div>
+          <div class="dlr-name">🚖 ${d.driver_name}</div>
+          <div class="dlr-plate">${d.plate}</div>
+          <div class="dlr-coords">📍 ${parseFloat(d.lat).toFixed(5)}, ${parseFloat(d.lon).toFixed(5)}</div>
+        </div>
+        <div class="dlr-time">${ago}</div>
+      </div>`;
+  }).join('');
+}
+
+// Poll driver locations every 20s
+setInterval(refreshDriverLocs, 20000);
+refreshDriverLocs();
 </script>
 </body>
 </html>

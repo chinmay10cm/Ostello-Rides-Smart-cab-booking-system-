@@ -13,124 +13,270 @@
   --brand-dim:rgba(168,85,247,.12);
   --text:#e8ecf4;--text2:#8892a4;--text3:#454f63;
   --green:#34d399;--red:#f87171;--blue:#60a5fa;
+  --shadow-card: 0 4px 24px rgba(0,0,0,.45), 0 1px 4px rgba(0,0,0,.3);
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
 
-.nav{display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--border);}
-.nav-icon{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,var(--brand-blue),var(--brand-purple),var(--brand-pink));display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:#fff;}
-/* Line 22 */
-.nav-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;background:linear-gradient(90deg,var(--brand-blue),var(--brand-pink));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
-
-/* Line 47: Simply delete the entire .stop-info{} line */
+/* NAV */
+.nav{
+  display:flex;align-items:center;gap:12px;padding:14px 20px;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:20;
+}
+.nav-icon{
+  width:38px;height:38px;border-radius:10px;
+  background:linear-gradient(135deg,var(--brand-blue),var(--brand-purple),var(--brand-pink));
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:#fff;
+}
+.nav-title{
+  font-family:'Syne',sans-serif;font-size:16px;font-weight:800;
+  background:linear-gradient(90deg,var(--brand-blue),var(--brand-pink));
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+}
 .nav-sub{font-size:11px;color:var(--text2);}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.gps-pill{
+  display:flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:99px;font-size:12px;font-weight:600;
+  background:rgba(52,211,153,.1);color:var(--green);border:1px solid rgba(52,211,153,.25);
+  cursor:pointer;transition:all .18s;
+}
+.gps-pill.off{background:rgba(248,113,113,.08);color:var(--red);border-color:rgba(248,113,113,.2);}
+.gps-dot{width:7px;height:7px;border-radius:50%;background:currentColor;animation:blink 1.5s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
 
-.content{padding:20px;}
-.heading{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:16px;}
+/* CONTENT */
+.content{padding:20px;max-width:640px;margin:0 auto;}
+.heading{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:6px;}
 .heading span{color:var(--brand-primary);}
+.sub{font-size:13px;color:var(--text2);margin-bottom:20px;}
 
-.trip-card{background:var(--surface);border:1px solid var(--border2);border-radius:14px;overflow:hidden;margin-bottom:16px;}
+/* TRIP CARD */
+.trip-card{
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:16px;overflow:hidden;margin-bottom:18px;
+  box-shadow:var(--shadow-card);
+  transition:transform .18s;
+}
+.trip-card:hover{transform:translateY(-2px);}
 .trip-hd{
   display:flex;align-items:center;justify-content:space-between;
-  padding:12px 16px;background:var(--brand-dim);border-bottom:1px solid var(--border);
+  padding:14px 18px;background:var(--brand-dim);border-bottom:1px solid var(--border);
 }
-.trip-time{font-family:'DM Mono',monospace;font-size:18px;font-weight:500;color:var(--brand-primary);}
-.trip-type{font-size:12px;color:var(--text2);margin-top:2px;}
-.trip-badge{font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(52,211,153,.1);color:var(--green);font-weight:600;}
+.trip-time{font-family:'DM Mono',monospace;font-size:22px;font-weight:500;color:var(--brand-primary);}
+.trip-type{font-size:12px;color:var(--text2);margin-top:3px;}
+.trip-badge{
+  font-size:11px;padding:4px 12px;border-radius:99px;
+  background:rgba(52,211,153,.1);color:var(--green);font-weight:700;
+  text-transform:uppercase;letter-spacing:.5px;
+}
 
-.stop-list{padding:14px 16px;}
-.stop{display:flex;align-items:flex-start;gap:10px;margin-bottom:14px;}
+/* STOPS */
+.stop-list{padding:16px 18px;}
+.stop{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px;}
 .stop:last-child{margin-bottom:0;}
+.stop-spine{display:flex;flex-direction:column;align-items:center;flex-shrink:0;padding-top:2px;}
 .stop-dot{
-  width:12px;height:12px;border-radius:50%;border:2px solid var(--brand-primary);background:var(--bg);
-  flex-shrink:0;margin-top:3px;
+  width:13px;height:13px;border-radius:50%;border:2.5px solid var(--brand-primary);background:var(--bg);
 }
-.stop-dot.start{background:var(--brand-primary);border-color:var(--brand-primary);}
+.stop-dot.start{background:var(--brand-primary);}
 .stop-dot.end{border-color:var(--red);background:var(--red);}
-
-.stop-name{font-size:14px;font-weight:600;}
-.stop-pax{font-size:12px;color:var(--text2);margin-top:3px;}
+.stop-line{width:2px;flex:1;background:var(--border2);margin:3px 0;min-height:22px;}
+.stop-name{font-size:14px;font-weight:600;line-height:1.3;}
+.stop-pax{font-size:12px;color:var(--text2);margin-top:4px;}
 .stop-room{font-size:11px;color:var(--text3);}
 
-.stat-row{display:flex;gap:10px;padding:12px 16px;background:var(--surface2);border-top:1px solid var(--border);}
-.stat{flex:1;text-align:center;}
-.sv{font-size:18px;font-weight:700;color:var(--brand-primary);font-family:'Syne',sans-serif;}
-.sl{font-size:11px;color:var(--text2);}
+/* STAT ROW */
+.stat-row{
+  display:flex;gap:0;border-top:1px solid var(--border);
+  background:var(--surface2);
+}
+.stat{flex:1;text-align:center;padding:12px 8px;border-right:1px solid var(--border);}
+.stat:last-child{border-right:none;}
+.sv{font-size:20px;font-weight:700;color:var(--brand-primary);font-family:'Syne',sans-serif;}
+.sl{font-size:11px;color:var(--text2);margin-top:2px;}
 
-.empty{padding:48px 20px;text-align:center;color:var(--text3);font-size:14px;}
+.empty{padding:56px 20px;text-align:center;color:var(--text3);font-size:14px;}
+.empty-icon{font-size:36px;margin-bottom:12px;}
+
+/* TOAST */
+.toast{
+  position:fixed;bottom:24px;right:20px;z-index:99;
+  background:var(--surface);border:1px solid var(--brand-primary);
+  border-radius:10px;padding:11px 18px;font-size:13px;font-weight:500;
+  color:var(--brand-primary);animation:toastIn .22s ease;pointer-events:none;
+}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+@media(prefers-reduced-motion:reduce){
+  .trip-card{transition:none;}
+  .toast{animation:none;}
+}
 </style>
 </head>
 <body>
+
 <nav class="nav">
   <div class="nav-icon">OR</div>
   <div>
     <div class="nav-title">Driver View</div>
-    <div class="nav-sub">Today's Schedule</div>
+    <div class="nav-sub" id="dateLabel">Today's Schedule</div>
+  </div>
+  <div class="nav-right">
+    <div class="gps-pill off" id="gpsPill" onclick="toggleGPS()">
+      <span class="gps-dot"></span>
+      <span id="gpsLabel">GPS Off</span>
+    </div>
+    <a href="/" style="font-size:12px;color:var(--text2);text-decoration:none;padding:6px 10px;border-radius:8px;background:var(--surface2);border:1px solid var(--border2)">← App</a>
   </div>
 </nav>
 
 <div class="content">
-  <div class="heading">Your trips for <span id="dateLabel">today</span></div>
-  <div id="tripList"><div class="empty">Loading schedule…</div></div>
+  <div class="heading">Trips for <span id="dayLabel">today</span></div>
+  <div class="sub">Your assigned runs · pull-to-refresh or tap ↻ to update</div>
+  <div id="tripList"><div class="empty"><div class="empty-icon">⏳</div>Loading schedule…</div></div>
 </div>
 
 <script>
-document.getElementById('dateLabel').textContent =
-  new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'});
+// ── Date labels ──────────────────────────────────────────────────────────────
+const todayStr = new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'});
+document.getElementById('dateLabel').textContent = todayStr;
+document.getElementById('dayLabel').textContent  = todayStr;
 
+// ── Toast ────────────────────────────────────────────────────────────────────
+function toast(msg, dur=2800) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), dur);
+}
+
+// ── Load schedule ─────────────────────────────────────────────────────────────
 async function load() {
   try {
-    const r = await fetch('/api/driver/my-group', { credentials:'include' });
+    const r = await fetch('/api/driver/my-group', { credentials: 'include' });
+    if (r.status === 401) throw new Error('auth');
     const groups = await r.json();
-    render(groups);
-  } catch {
+    render(Array.isArray(groups) ? groups : []);
+  } catch (e) {
     document.getElementById('tripList').innerHTML =
-      '<div class="empty">⚠️ Please log in as a driver to view schedule.</div>';
+      `<div class="empty"><div class="empty-icon">🔒</div>Please log in as a driver to view your schedule.</div>`;
   }
 }
 
 function render(groups) {
   const el = document.getElementById('tripList');
-  if (!groups.length || groups.error) {
-    el.innerHTML = '<div class="empty">No trips assigned for today.</div>';
+  if (!groups.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🌙</div>No trips assigned for today.<br>Check back later.</div>';
     return;
   }
+
   el.innerHTML = groups.map(g => {
     const stops = g.ordered_stops || [];
-    const stopsHtml = stops.map((s, i) => `
-      <div class="stop">
-        <div class="stop-dot ${i===0?'start':i===stops.length-1?'end':''}"></div>
-        <div class="stop-info">
-          <div class="stop-name">${s.label}</div>
-          ${g.passengers?.filter(p=>p.location_label===s.label).map(p=>
-            `<div class="stop-pax">👤 ${p.name} <span class="stop-room">${p.room_number?'Room '+p.room_number:''}</span></div>`
-          ).join('')||''}
-        </div>
-      </div>`).join('');
+    const pax   = g.passengers   || [];
 
-    const dist = g.route_data?.distance_km || '—';
-    const dur  = g.route_data?.duration_min || '—';
+    const stopsHtml = stops.map((s, i) => {
+      const isFirst = i === 0;
+      const isLast  = i === stops.length - 1;
+      const riders  = pax.filter(p => p.location_label === s.label);
+      const paxHtml = riders.map(p =>
+        `<div class="stop-pax">👤 ${p.name}${p.room_number ? ` <span class="stop-room">· Rm ${p.room_number}</span>` : ''}</div>`
+      ).join('');
+
+      return `
+        <div class="stop">
+          <div class="stop-spine">
+            <div class="stop-dot ${isFirst ? 'start' : isLast ? 'end' : ''}"></div>
+            ${!isLast ? '<div class="stop-line"></div>' : ''}
+          </div>
+          <div>
+            <div class="stop-name">${s.label}</div>
+            ${paxHtml}
+          </div>
+        </div>`;
+    }).join('');
+
+    const dist = g.route_data?.distance_km ?? '—';
+    const dur  = g.route_data?.duration_min ?? '—';
+    const cap  = 10;
 
     return `
     <div class="trip-card">
       <div class="trip-hd">
         <div>
           <div class="trip-time">${g.scheduled_time}</div>
-          <div class="trip-type">${g.type==='drop'?'🚐 Drop run':'📍 Pickup run'} · ${g.passengers?.length||0} passengers</div>
+          <div class="trip-type">${g.type === 'drop' ? '🚐 Drop run' : '📍 Pickup run'} · ${pax.length} passenger${pax.length !== 1 ? 's' : ''}</div>
         </div>
         <span class="trip-badge">${g.status}</span>
       </div>
-      <div class="stop-list">${stopsHtml||'<div style="color:var(--text3);font-size:13px">No stops loaded yet</div>'}</div>
+      <div class="stop-list">
+        ${stopsHtml || '<div style="color:var(--text3);font-size:13px">No stops loaded yet</div>'}
+      </div>
       <div class="stat-row">
         <div class="stat"><div class="sv">${dist} km</div><div class="sl">Distance</div></div>
-        <div class="stat"><div class="sv">${dur} min</div><div class="sl">Duration</div></div>
-        <div class="stat"><div class="sv">${g.passengers?.length||0}/10</div><div class="sl">Passengers</div></div>
+        <div class="stat"><div class="sv">${dur} min</div><div class="sl">Est. time</div></div>
+        <div class="stat"><div class="sv">${pax.length}/${cap}</div><div class="sl">Passengers</div></div>
       </div>
     </div>`;
   }).join('');
 }
 
+// ── GPS location posting ──────────────────────────────────────────────────────
+let gpsActive   = false;
+let gpsInterval = null;
+
+async function postLocation(lat, lon) {
+  try {
+    await fetch('/api/driver/location', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ lat, lon })
+    });
+  } catch {}
+}
+
+function startGPS() {
+  if (!navigator.geolocation) { toast('GPS not available on this device'); return; }
+  navigator.geolocation.getCurrentPosition(
+    pos => postLocation(pos.coords.latitude, pos.coords.longitude),
+    () => toast('⚠️ GPS permission denied')
+  );
+  gpsInterval = setInterval(() => {
+    navigator.geolocation.getCurrentPosition(
+      pos => postLocation(pos.coords.latitude, pos.coords.longitude),
+      () => {}
+    );
+  }, 15000); // every 15 s
+}
+
+function stopGPS() {
+  if (gpsInterval) { clearInterval(gpsInterval); gpsInterval = null; }
+}
+
+function toggleGPS() {
+  gpsActive = !gpsActive;
+  const pill  = document.getElementById('gpsPill');
+  const label = document.getElementById('gpsLabel');
+  if (gpsActive) {
+    pill.classList.remove('off');
+    label.textContent = 'GPS On';
+    startGPS();
+    toast('📡 Live location sharing started');
+  } else {
+    pill.classList.add('off');
+    label.textContent = 'GPS Off';
+    stopGPS();
+    toast('GPS sharing stopped');
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
 load();
+// Refresh every 2 min
+setInterval(load, 120000);
 </script>
 </body>
 </html>
