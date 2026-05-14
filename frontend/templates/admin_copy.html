@@ -3,9 +3,8 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>OstelloWork — Admin</title>
+<title>OstelloRides — Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 <style>
 :root{
   --bg:#0b0d10;--surface:#13161c;--surface2:#1a1e27;--border:#252b38;--border2:#2e3648;
@@ -36,7 +35,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   font-family:'Syne',sans-serif;font-size:17px;font-weight:800;
   background:linear-gradient(90deg,var(--brand-blue),var(--brand-pink));
   -webkit-background-clip:text;
-  background-clip:text; 
+  background-clip:text; /* Added standard property */
   -webkit-text-fill-color:transparent;
 }
 .nav-sub{font-size:12px;color:var(--text2);}
@@ -194,7 +193,7 @@ select.modal-input{cursor:pointer;}
 
 .empty{padding:32px;text-align:center;color:var(--text3);font-size:14px;}
 
-/* LIVE DRIVER LOCATIONS PANEL & MAP */
+/* LIVE DRIVER LOCATIONS PANEL */
 .live-panel{
   margin:0 24px 20px;padding:16px 20px;
   background:var(--surface);border:1px solid var(--border2);border-radius:14px;
@@ -208,36 +207,10 @@ select.modal-input{cursor:pointer;}
   animation:blink 1.5s infinite;display:inline-block;margin-right:6px;
 }
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
-
-/* Leaflet Map Styles */
-#adminMap {
-  height: 350px;
-  width: 100%;
-  border-radius: 12px;
-  border: 1px solid var(--border2);
-  margin-bottom: 16px;
-  z-index: 1; /* Keep map under modals */
-  background: var(--surface2);
-}
-/* Style Leaflet Popups for Dark Theme */
-.leaflet-popup-content-wrapper, .leaflet-popup-tip {
-  background: var(--surface2) !important;
-  color: var(--text) !important;
-  border: 1px solid var(--border2);
-  box-shadow: 0 4px 14px rgba(0,0,0,0.5) !important;
-}
-.leaflet-popup-content {
-  font-family: 'DM Sans', sans-serif;
-  margin: 14px !important;
-}
-
 .driver-loc-row{
-  display:flex;align-items:center;gap:12px;padding:10px 12px;
+  display:flex;align-items:center;gap:12px;padding:10px 0;
   border-bottom:1px solid rgba(255,255,255,.04);
-  border-radius: 8px;
-  transition: background 0.2s ease;
 }
-.driver-loc-row:hover{background:var(--surface2);}
 .driver-loc-row:last-child{border-bottom:none;}
 .dlr-av{
   width:34px;height:34px;border-radius:50%;flex-shrink:0;
@@ -257,7 +230,7 @@ select.modal-input{cursor:pointer;}
   <div class="nav-brand">
     <div class="nav-icon">OW</div>
     <div>
-      <div class="nav-title">OstelloWork — Admin</div>
+      <div class="nav-title">OstelloRides — Admin</div>
       <div class="nav-sub">CBD Belapur, Navi Mumbai</div>
     </div>
   </div>
@@ -275,16 +248,14 @@ select.modal-input{cursor:pointer;}
   <div class="stat-card"><div class="stat-label">Cancelled</div><div class="stat-val red" id="sCanc">—</div></div>
 </div>
 
+<!-- Live Driver Locations -->
 <div class="live-panel">
   <div class="live-panel-hd">
     <div class="section-title">
-      <span class="live-dot-anim"></span>Live Driver Mapping
+      <span class="live-dot-anim"></span>Live Driver Locations
     </div>
     <button class="refresh-btn" onclick="refreshDriverLocs()">↻ Refresh</button>
   </div>
-  
-  <div id="adminMap"></div>
-
   <div id="driverLocList"><div class="empty" style="padding:16px">No location pings yet — drivers must enable GPS.</div></div>
 </div>
 
@@ -344,15 +315,10 @@ select.modal-input{cursor:pointer;}
   </div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
 let vehicles = [];
 let activeGroupId = null;
 let activeModal = null;
-
-// Map Variables
-let adminMap = null;
-let driverMarkers = {};
 
 async function api(path, method='GET', body=null) {
   const opts = { method, headers:{'Content-Type':'application/json'}, credentials:'include' };
@@ -374,26 +340,6 @@ function closeModal() {
   document.getElementById('driverModal').style.display   = 'none';
   activeGroupId = null; activeModal = null;
 }
-
-// Map Initialization
-function initMap() {
-  // Center roughly on Ostello / Navi Mumbai
-  adminMap = L.map('adminMap').setView([19.0176, 73.0360], 13);
-  
-  // Dark theme OSM tiles via CartoDB
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    subdomains: 'abcd',
-    maxZoom: 20
-  }).addTo(adminMap);
-}
-
-// Call initMap once the DOM is fully loaded
-document.addEventListener('DOMContentLoaded', () => {
-  initMap();
-  refresh();
-  refreshDriverLocs();
-});
 
 async function refresh() {
   const [groups, vehs] = await Promise.all([
@@ -539,25 +485,16 @@ async function confirmAddDriver() {
   refresh();
 }
 
-// MAP AND LOCATION LOGIC
+// init
+refresh();
+
 async function refreshDriverLocs() {
   const locs = await api('/admin/driver-locations');
   const el   = document.getElementById('driverLocList');
-  
   if (!locs || locs.error || !locs.length) {
     el.innerHTML = '<div class="empty" style="padding:16px">No location pings yet — drivers must enable GPS in their view.</div>';
     return;
   }
-
-  // Track plates that currently exist to clear stale markers
-  const currentPlates = new Set(locs.map(d => d.plate));
-  for (let plate in driverMarkers) {
-    if (!currentPlates.has(plate)) {
-      adminMap.removeLayer(driverMarkers[plate]);
-      delete driverMarkers[plate];
-    }
-  }
-
   el.innerHTML = locs.map(d => {
     const initials = d.driver_name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     const ago = d.recorded_at
@@ -568,70 +505,22 @@ async function refreshDriverLocs() {
           return `${Math.round(diff/3600)}h ago`;
         })()
       : '—';
-    
-    const lat = parseFloat(d.lat);
-    const lon = parseFloat(d.lon);
-
-    // Update or Create Map Marker
-    if (!isNaN(lat) && !isNaN(lon) && adminMap) {
-      if (driverMarkers[d.plate]) {
-        driverMarkers[d.plate].setLatLng([lat, lon]);
-        driverMarkers[d.plate].getPopup().setContent(`
-          <div style="font-weight:700; color:var(--brand-primary); margin-bottom:4px;">🚖 ${d.driver_name}</div>
-          <div style="font-size:11px; color:var(--text2);">${d.plate}</div>
-          <div style="font-size:10px; margin-top:6px; color:var(--green);">Updated ${ago}</div>
-        `);
-      } else {
-        // Custom marker icon matching Ostello brand
-        const markerHtml = `
-          <div style="
-            background: linear-gradient(135deg, var(--brand-blue), var(--brand-purple));
-            width: 28px; height: 28px; border-radius: 50%; 
-            border: 2px solid #fff; box-shadow: 0 0 10px rgba(168,85,247,0.8); 
-            display: flex; align-items: center; justify-content: center; 
-            color: white; font-size: 12px; font-weight: bold;">
-            ${initials}
-          </div>`;
-        
-        const customIcon = L.divIcon({
-          html: markerHtml,
-          className: '',
-          iconSize: [28, 28],
-          iconAnchor: [14, 14]
-        });
-
-        driverMarkers[d.plate] = L.marker([lat, lon], {icon: customIcon})
-          .bindPopup(`
-            <div style="font-weight:700; color:var(--brand-primary); margin-bottom:4px;">🚖 ${d.driver_name}</div>
-            <div style="font-size:11px; color:var(--text2);">${d.plate}</div>
-            <div style="font-size:10px; margin-top:6px; color:var(--green);">Updated ${ago}</div>
-          `)
-          .addTo(adminMap);
-      }
-    }
-
     return `
-      <div class="driver-loc-row" onclick="focusDriver(${lat}, ${lon})" style="cursor:pointer;" title="Click to locate on map">
+      <div class="driver-loc-row">
         <div class="dlr-av">${initials}</div>
         <div>
           <div class="dlr-name">🚖 ${d.driver_name}</div>
           <div class="dlr-plate">${d.plate}</div>
-          <div class="dlr-coords">📍 ${lat.toFixed(5)}, ${lon.toFixed(5)}</div>
+          <div class="dlr-coords">📍 ${parseFloat(d.lat).toFixed(5)}, ${parseFloat(d.lon).toFixed(5)}</div>
         </div>
         <div class="dlr-time">${ago}</div>
       </div>`;
   }).join('');
 }
 
-// Function to pan map when a driver row is clicked
-function focusDriver(lat, lon) {
-  if(adminMap && !isNaN(lat) && !isNaN(lon)) {
-    adminMap.setView([lat, lon], 16, { animate: true, duration: 0.5 });
-  }
-}
-
 // Poll driver locations every 20s
 setInterval(refreshDriverLocs, 20000);
+refreshDriverLocs();
 </script>
 </body>
 </html>
